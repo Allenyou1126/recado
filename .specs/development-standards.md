@@ -679,13 +679,16 @@ function CommentsPage() {
 
 ### 11.3 Import 顺序
 
-1. Node 内置模块
-2. 第三方依赖
-3. `@recado/*` 工作区包
-4. 本应用绝对路径（`@/`）
-5. 相对路径
+由 **oxfmt 内置的 import 排序**自动完成，**不靠人工，也不要手工调整**。实际分组为：
 
-由 ESLint 的 `import/order` 规则强制，不靠人工。
+1. Node 内置模块（`node:*`）
+2. 第三方依赖（按字母序）
+3. `@recado/*` 工作区包
+4. 相对路径
+
+组间自动插入空行。运行 `pnpm format` 即可，无需记忆顺序。
+
+> 不要为此引入 ESLint 插件 —— Oxc 工具链已覆盖（见 §11.5）。
 
 ### 11.4 注释
 
@@ -695,6 +698,38 @@ function CommentsPage() {
   // 不级联删除子回复：Waline 的静默级联会连带删除他人发言（决策 Q-04）
   ```
 - 禁止保留被注释掉的死代码。
+
+### 11.5 工具链：Oxc（lint + format）
+
+Lint 与格式化**统一使用 Oxc 工具链**，不引入 ESLint 或 Prettier。
+
+| 工具 | 职责 | 配置 |
+| --- | --- | --- |
+| **oxlint** | 静态检查，**开启类型感知规则** | `.oxlintrc.json` |
+| **oxfmt** | 格式化、import 排序、Tailwind 类名排序 | `.oxfmtrc.json` |
+
+```bash
+pnpm lint          # oxlint
+pnpm lint:fix      # oxlint --fix
+pnpm format        # oxfmt（写入）
+pnpm format:check  # 只检查（CI 用）
+pnpm check         # typecheck + lint + format:check
+```
+
+**规则取舍原则**：只强制「机器能判断、且人容易忘」的规则（import 顺序、类型导入方式、
+未使用变量、`no-explicit-any`、`no-non-null-assertion`），不引入风格类规则 —— 格式交给 oxfmt。
+
+**为什么选 Oxc 而不是 ESLint + Prettier**：
+
+- 单一工具链覆盖 lint 与 format，省掉 ESLint 插件体系与其传递依赖
+  （实测依赖数从 247 降到 179）
+- oxlint 已支持类型感知规则（2026-07 稳定），底层复用 TypeScript 7 的原生实现
+- oxfmt 内置 import 排序与 Tailwind 类排序，无需 `eslint-plugin-import` 与
+  `prettier-plugin-tailwindcss`
+- 速度快一个量级：实测 33 个文件格式化 138ms、17 个文件 lint 216ms
+
+**已知风险**：`oxfmt` 目前仍是 0.x（Beta）。它已通过 Prettier 全部 JS/TS 一致性测试，
+但 API 与行为仍可能有变动。升级 oxfmt 时按依赖升级流程走，独立成 PR。
 
 ---
 

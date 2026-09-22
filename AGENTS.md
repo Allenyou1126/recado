@@ -8,9 +8,12 @@
 
 **Recado** —— 自托管、多站点、Headless 的评论系统。Node.js + TanStack Start + PostgreSQL。
 
-> ⚠️ **当前处于设计阶段，仓库内还没有任何实现代码。**
-> 你的任务通常是从 `.specs/` 出发搭建骨架或实现某个模块，而**不是**去修改一个已有的代码库。
-> 如果被要求「修 bug」，先确认代码是否真的存在。
+> ⚠️ **当前只有工程骨架，没有业务功能。**
+> pnpm monorepo、TypeScript 配置、Drizzle 连接层、Oxc 工具链、TanStack Start 应用壳
+> 与健康检查路由已经跑通；评论、审核、通知、管理台、OIDC 登录**均未实现**。
+>
+> 你的任务通常是从 `.specs/` 出发实现某个模块。动手前先确认代码是否真的存在，
+> 不要假设某个功能已经写好。
 
 ---
 
@@ -167,18 +170,24 @@ Assisted-By: DeepSeek Harness (deepseek-flash)
 
 ## 常用命令
 
-> 尚未 `scaffold`，以下为规划中的命令，**实现前不要当作可用**。
-
 ```bash
 pnpm install            # 安装依赖
 pnpm dev                # 启动开发服务器
 pnpm build              # 生产构建
+pnpm typecheck          # tsc --noEmit（全部工作区包）
+pnpm lint               # oxlint（含类型感知规则）
+pnpm lint:fix           # oxlint --fix
+pnpm format             # oxfmt（含 import 排序与 Tailwind 类排序）
+pnpm format:check       # 只检查不写入
+pnpm check              # typecheck + lint + format:check，提交前跑这个
 pnpm test               # 单元 + 集成测试
-pnpm lint               # ESLint
-pnpm typecheck          # tsc --noEmit
 pnpm db:generate        # 生成 Drizzle 迁移
 pnpm db:migrate         # 执行迁移（独立步骤，不在应用启动时跑）
 ```
+
+**Lint 与格式化统一用 Oxc 工具链**（`oxlint` + `oxfmt`），不引入 ESLint / Prettier。
+`oxfmt` 已内置 import 排序与 Tailwind 类排序，**不要手工调整 import 顺序或类名顺序**，
+运行 `pnpm format` 即可。
 
 **数据库迁移作为独立部署步骤执行**，不要在应用启动时自动迁移——
 框架没有启动生命周期钩子，且迁移失败会污染启动流程。

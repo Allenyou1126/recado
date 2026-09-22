@@ -1,0 +1,74 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "import",
+    "promise",
+    "node",
+    "react",
+    "jsx-a11y",
+    "vitest"
+  ],
+
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+
+  "env": {
+    "node": true,
+    "es2026": true
+  },
+
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "warn"
+  },
+
+  "rules": {
+    "eqeqeq": "error",
+    "no-console": "warn",
+
+    "react/react-in-jsx-scope": "off",
+
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/consistent-type-imports": ["error", { "fixStyle": "inline-type-imports" }],
+
+    "import/no-cycle": "error"
+  },
+
+  "overrides": [
+    {
+      "files": ["apps/server/src/**/*.{ts,tsx}"],
+      "env": { "browser": true }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts"],
+      "env": { "vitest": true },
+      "rules": {
+        "no-console": "off"
+      }
+    },
+    {
+      "files": ["scripts/**/*.mjs"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.output/**",
+    "**/.nitro/**",
+    "**/.tanstack/**",
+    "**/.tmp-npm-cache/**",
+    "**/routeTree.gen.ts",
+    "**/drizzle/**"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@recado/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "领域逻辑 —— 评论、审核、声誉、通知、渲染（不依赖任何框架）",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@recado/db": "workspace:*",
+    "@recado/shared": "workspace:*"
+  }
+}

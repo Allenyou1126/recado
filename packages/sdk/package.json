@@ -1,0 +1,16 @@
+{
+  "name": "@recado/client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Recado 评论系统的 Headless 客户端 SDK",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@recado/shared": "workspace:*"
+  }
+}

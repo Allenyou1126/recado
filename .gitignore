@@ -11,6 +11,15 @@ build/
 .vite/
 *.tsbuildinfo
 
+# 数据库迁移产物中的快照由 drizzle-kit 生成，需提交；
+# 但本地 studio 缓存不入库
+.drizzle/
+
+# 临时文件
+.tmp/
+.cache/
+.tmp-npm-cache/
+
 # 环境变量（示例文件除外）
 .env
 .env.*

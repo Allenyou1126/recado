@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "insertFinalNewline": true,
+
+  "sortImports": {},
+
+  "sortTailwindcss": {},
+
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.output/**",
+    "**/.nitro/**",
+    "**/.tanstack/**",
+    "**/.tmp-npm-cache/**",
+    "**/routeTree.gen.ts",
+    "**/drizzle/**",
+    "pnpm-lock.yaml",
+
+    ".specs/**",
+    "AGENTS.md",
+    "README.md"
+  ]
+}

@@ -1,0 +1,56 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 12 用 allowBuilds 显式放行依赖的构建脚本（默认全部阻止）。
+# 新增含原生构建的依赖时在此追加，不要整体关闭该保护。
+allowBuilds:
+  esbuild: true
+
+# TanStack Start 相关包发布节奏极快（1.x 线已迭代 700+ 次发布），
+# pnpm 的 minimumReleaseAge 供应链保护会自动把它们列入豁免。
+# 见 .specs/requirements.md §10 风险表：框架锁定精确版本，升级独立成 PR。
+minimumReleaseAgeExclude:
+  - '@tanstack/react-start-rsc@0.1.56'
+  - '@tanstack/react-start@1.168.57'
+  - '@tanstack/start-plugin-core@1.171.47'
+  - '@oxfmt/binding-android-arm-eabi@0.70.0'
+  - '@oxfmt/binding-android-arm64@0.70.0'
+  - '@oxfmt/binding-darwin-arm64@0.70.0'
+  - '@oxfmt/binding-darwin-x64@0.70.0'
+  - '@oxfmt/binding-freebsd-x64@0.70.0'
+  - '@oxfmt/binding-linux-arm-gnueabihf@0.70.0'
+  - '@oxfmt/binding-linux-arm-musleabihf@0.70.0'
+  - '@oxfmt/binding-linux-arm64-gnu@0.70.0'
+  - '@oxfmt/binding-linux-arm64-musl@0.70.0'
+  - '@oxfmt/binding-linux-ppc64-gnu@0.70.0'
+  - '@oxfmt/binding-linux-riscv64-gnu@0.70.0'
+  - '@oxfmt/binding-linux-riscv64-musl@0.70.0'
+  - '@oxfmt/binding-linux-s390x-gnu@0.70.0'
+  - '@oxfmt/binding-linux-x64-gnu@0.70.0'
+  - '@oxfmt/binding-linux-x64-musl@0.70.0'
+  - '@oxfmt/binding-openharmony-arm64@0.70.0'
+  - '@oxfmt/binding-win32-arm64-msvc@0.70.0'
+  - '@oxfmt/binding-win32-ia32-msvc@0.70.0'
+  - '@oxfmt/binding-win32-x64-msvc@0.70.0'
+  - '@oxlint/binding-android-arm-eabi@1.85.0'
+  - '@oxlint/binding-android-arm64@1.85.0'
+  - '@oxlint/binding-darwin-arm64@1.85.0'
+  - '@oxlint/binding-darwin-x64@1.85.0'
+  - '@oxlint/binding-freebsd-x64@1.85.0'
+  - '@oxlint/binding-linux-arm-gnueabihf@1.85.0'
+  - '@oxlint/binding-linux-arm-musleabihf@1.85.0'
+  - '@oxlint/binding-linux-arm64-gnu@1.85.0'
+  - '@oxlint/binding-linux-arm64-musl@1.85.0'
+  - '@oxlint/binding-linux-ppc64-gnu@1.85.0'
+  - '@oxlint/binding-linux-riscv64-gnu@1.85.0'
+  - '@oxlint/binding-linux-riscv64-musl@1.85.0'
+  - '@oxlint/binding-linux-s390x-gnu@1.85.0'
+  - '@oxlint/binding-linux-x64-gnu@1.85.0'
+  - '@oxlint/binding-linux-x64-musl@1.85.0'
+  - '@oxlint/binding-openharmony-arm64@1.85.0'
+  - '@oxlint/binding-win32-arm64-msvc@1.85.0'
+  - '@oxlint/binding-win32-ia32-msvc@1.85.0'
+  - '@oxlint/binding-win32-x64-msvc@1.85.0'
+  - oxfmt@0.70.0
+  - oxlint@1.85.0

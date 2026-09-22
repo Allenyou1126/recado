@@ -1,0 +1,16 @@
+{
+  "name": "@recado/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Zod schema、类型与错误码 —— API 契约的单一真源",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  }
+}

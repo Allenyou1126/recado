@@ -690,6 +690,7 @@ admins ───── sessions
 | 日志 | pino | 结构化、低开销 |
 | 管理台 UI | Tailwind CSS + shadcn/ui | 见 Q-13 |
 | 测试 | Vitest + Playwright | 单元/集成 + E2E |
+| Lint / 格式化 | **Oxc 工具链**（oxlint + oxfmt） | 统一 lint 与 format；含类型感知规则、import 排序与 Tailwind 类名排序。不引入 ESLint / Prettier，见开发规范 §11.5 |
 
 ### 8.2 关键技术点：公开 API 必须用 Server Route（已实测验证）
 
