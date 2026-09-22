@@ -12,8 +12,9 @@
 > pnpm monorepo、TypeScript 配置、Drizzle 连接层、Oxc 工具链、TanStack Start 应用壳
 > 与健康检查路由已经跑通；评论、审核、通知、管理台、OIDC 登录**均未实现**。
 >
-> 你的任务通常是从 `.specs/` 出发实现某个模块。动手前先确认代码是否真的存在，
-> 不要假设某个功能已经写好。
+> **动手实现功能时，入口是 [`.specs/development-plan.md`](./.specs/development-plan.md)** ——
+> 它把里程碑 1 拆成 10 个有依赖顺序的阶段，含任务清单、验收标准与执行约定。
+> 动手前先确认代码是否真的存在，不要假设某个功能已经写好。
 
 ---
 
@@ -23,6 +24,7 @@
 
 | # | 文档 | 读什么 |
 | --- | --- | --- |
+| 0 | [`.specs/development-plan.md`](./.specs/development-plan.md) | **执行入口**：阶段划分、当前进度、执行约定与红线 |
 | 1 | [`.specs/requirements.md`](./.specs/requirements.md) §1–§2 | 定位与 19 项已定决策（D1–D19） |
 | 2 | [`.specs/decision-log.md`](./.specs/decision-log.md) | 18 项决策的**理由**与连带影响 |
 | 3 | [`.specs/requirements.md`](./.specs/requirements.md) §5–§6 | 领域模型、站点配置、功能模块 M1–M10 |

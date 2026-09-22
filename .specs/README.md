@@ -8,6 +8,7 @@
 
 | 文件 | 内容 | 什么时候看 |
 | --- | --- | --- |
+| [`development-plan.md`](./development-plan.md) | **开发计划**：里程碑 1 的 10 个阶段、任务拆解、验收标准、执行约定 | **准备动手写代码时，先看这个** |
 | [`requirements.md`](./requirements.md) | 需求分析与功能规划：定位、领域模型、M1–M10 功能模块、非功能需求、技术架构、路线图、风险、验收标准 | 想知道「要做什么」 |
 | [`decision-log.md`](./decision-log.md) | 需求确认记录：18 项问答全量归档，每项含结论与设计连带影响 | 想知道「为什么这么定」 |
 | [`development-standards.md`](./development-standards.md) | 开发规范：分层架构、依赖注入、Context 层次、Result 错误处理、数据库与安全规范、前端规范、测试、Git 与评审清单 | 准备写代码 |
@@ -20,7 +21,8 @@
 2. `decision-log.md` —— 补齐决策背后的取舍
 3. `requirements.md` §5–§6 —— 领域模型与功能模块
 4. `development-standards.md` —— 动手前过一遍
-5. 研究资料 —— 按需查阅，不必通读
+5. `development-plan.md` —— 按阶段执行
+6. 研究资料 —— 按需查阅，不必通读
 
 ---
 
@@ -30,7 +32,8 @@
 | --- | --- |
 | 需求分析 | ✅ 完成，18 项疑问全部关闭 |
 | 开发规范 | ✅ 完成 v1.0 |
-| 技术设计 | ⬜ 未开始 |
+| 工程骨架 | ✅ 完成（pnpm monorepo + Oxc 工具链 + TanStack Start 应用壳） |
+| 开发计划 | ✅ 完成（10 个阶段，见 `development-plan.md`） |
 | 实现 | ⬜ 未开始 |
 
 ---

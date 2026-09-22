@@ -168,9 +168,8 @@
 
 ```
 sites ──┬── threads ──── comments ──┬── comment_mentions
-        ├── members ───────────────┘
-        ├── labels ── member_labels
-        ├── thread? (见上)
+        ├── members ──┬────────────┘
+        │             └── member_labels ── labels
         ├── outbox (邮件任务)
         ├── unsubscribes
         └── audit_logs
@@ -217,7 +216,6 @@ admins ───── sessions
 | `email` | citext | 身份归并键。**永不返回给公开 API** |
 | `nickname` / `website` | text | 最近一次使用的值 |
 | `avatar_url` | text null | 为空时按邮箱取 Gravatar |
-| `label_id` | uuid null FK | 展示徽章，站点级，仅展示（D7） |
 | `spam_count` | int default 0 | 该邮箱被标记垃圾的评论数（审核声誉，与标签分离） |
 | `review_required` | bool default false | 为真时该邮箱的新评论一律进 `pending` |
 | `first_seen_at` / `last_seen_at` | timestamptz | |
@@ -225,14 +223,22 @@ admins ───── sessions
 
 唯一约束：`(site_id, email)`；索引 `email`。
 
-> **注意区分两个概念**：`label_id` 是**展示徽章**（D7，不参与审核）；
-> `spam_count` / `review_required` 是**审核声誉**（D10，驱动自动待审）。
-> Waline 把两者混在 `Users.label` 一个自由文本字段里，我们用两个独立字段避免语义打架。
+> **注意区分两个概念**：**展示徽章**（`member_labels`，D7，不参与审核）
+> 与**审核声誉**（`spam_count` / `review_required`，D10，驱动自动待审）。
+> Waline 把两者混在 `Users.label` 一个自由文本字段里，我们用两套独立结构避免语义打架。
 
 #### `labels` — 展示徽章（站点级）
 
 `id` / `site_id` / `name`（如「站长」「作者」「友链」）/ `color` / `sort` / `created_at`
 唯一约束：`(site_id, name)`。
+
+#### `member_labels` — 成员与徽章的多对多关联
+
+`member_id` / `label_id` / `assigned_at` / `assigned_by`（管理员 `admins.id`）
+主键：`(member_id, label_id)`。
+
+> 用关联表而非 `members.label_id` 单外键：一个成员可能同时是「站长」和「作者」，
+> 单外键会逼着站长在多个徽章间二选一。
 
 #### `comments` — 评论
 
