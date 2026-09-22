@@ -11,12 +11,9 @@
  *   token 的**哈希**而不是 token 本身 —— 库被读走也不能直接冒用会话
  */
 
-import { customType, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-/** `inet`：PostgreSQL 原生 IP 类型，比 text 更省空间且天然校验格式 */
-const inet = customType<{ data: string }>({
-  dataType: () => 'inet',
-});
+import { inet } from './types';
 
 export const adminKind = pgEnum('admin_kind', ['human', 'machine']);
 export const adminStatus = pgEnum('admin_status', ['active', 'disabled']);
