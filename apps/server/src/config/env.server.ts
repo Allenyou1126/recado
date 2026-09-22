@@ -139,6 +139,23 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
   return parsed.data;
 }
 
+/**
+ * 本地开发兜底：从仓库根的 `.env` 读取环境变量。
+ *
+ * **只在 `DATABASE_URL` 未设置时加载** —— 否则本地遗留的 `.env` 会覆盖编排
+ * 注入的真实配置，这种事故很难排查。服务进程本身不需要它（Docker / CI 直接注入
+ * 环境变量），这是给 CLI 与本地脚本准备的。
+ */
+export function loadLocalEnvFile(): void {
+  if (process.env['DATABASE_URL']) return;
+
+  try {
+    process.loadEnvFile(new URL('../../../../.env', import.meta.url));
+  } catch {
+    // 没有 .env 是正常情况
+  }
+}
+
 let cachedEnv: Env | undefined;
 
 /**

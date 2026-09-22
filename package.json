@@ -18,6 +18,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check",
     "db:generate": "pnpm --filter @recado/db generate",
     "db:migrate": "pnpm --filter @recado/db migrate",
+    "cli": "pnpm --filter @recado/server cli",
     "prepare": "node scripts/setup-hooks.mjs"
   },
   "devDependencies": {
