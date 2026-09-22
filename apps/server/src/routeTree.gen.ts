@@ -13,6 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiV1ConfigRouteImport } from './routes/api/v1/config'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1/health'
 import { Route as ApiV1RenderRouteImport } from './routes/api/v1/render'
+import { Route as ApiV1CommentsIndexRouteImport } from './routes/api/v1/comments/index'
+import { Route as ApiV1CommentsCountRouteImport } from './routes/api/v1/comments/count'
+import { Route as ApiV1CommentsRecentRouteImport } from './routes/api/v1/comments/recent'
+import { Route as ApiV1ThreadsSplatRouteImport } from './routes/api/v1/threads/$'
+import { Route as ApiV1CommentsIdRepliesRouteImport } from './routes/api/v1/comments/$id/replies'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +39,53 @@ const ApiV1RenderRoute = ApiV1RenderRouteImport.update({
   path: '/api/v1/render',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1CommentsIndexRoute = ApiV1CommentsIndexRouteImport.update({
+  id: '/api/v1/comments/',
+  path: '/api/v1/comments/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CommentsCountRoute = ApiV1CommentsCountRouteImport.update({
+  id: '/api/v1/comments/count',
+  path: '/api/v1/comments/count',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CommentsRecentRoute = ApiV1CommentsRecentRouteImport.update({
+  id: '/api/v1/comments/recent',
+  path: '/api/v1/comments/recent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1ThreadsSplatRoute = ApiV1ThreadsSplatRouteImport.update({
+  id: '/api/v1/threads/$',
+  path: '/api/v1/threads/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CommentsIdRepliesRoute = ApiV1CommentsIdRepliesRouteImport.update({
+  id: '/api/v1/comments/$id/replies',
+  path: '/api/v1/comments/$id/replies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
+  '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
+  '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
+  '/api/v1/comments/': typeof ApiV1CommentsIndexRoute
+  '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
+  '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
+  '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
+  '/api/v1/comments': typeof ApiV1CommentsIndexRoute
+  '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +93,46 @@ export interface FileRoutesById {
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
+  '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
+  '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
+  '/api/v1/comments/': typeof ApiV1CommentsIndexRoute
+  '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/v1/config' | '/api/v1/health' | '/api/v1/render'
+  fullPaths:
+    | '/'
+    | '/api/v1/config'
+    | '/api/v1/health'
+    | '/api/v1/render'
+    | '/api/v1/comments/count'
+    | '/api/v1/comments/recent'
+    | '/api/v1/threads/$'
+    | '/api/v1/comments/'
+    | '/api/v1/comments/$id/replies'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/v1/config' | '/api/v1/health' | '/api/v1/render'
-  id: '__root__' | '/' | '/api/v1/config' | '/api/v1/health' | '/api/v1/render'
+  to:
+    | '/'
+    | '/api/v1/config'
+    | '/api/v1/health'
+    | '/api/v1/render'
+    | '/api/v1/comments/count'
+    | '/api/v1/comments/recent'
+    | '/api/v1/threads/$'
+    | '/api/v1/comments'
+    | '/api/v1/comments/$id/replies'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/v1/config'
+    | '/api/v1/health'
+    | '/api/v1/render'
+    | '/api/v1/comments/count'
+    | '/api/v1/comments/recent'
+    | '/api/v1/threads/$'
+    | '/api/v1/comments/'
+    | '/api/v1/comments/$id/replies'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +140,11 @@ export interface RootRouteChildren {
   ApiV1ConfigRoute: typeof ApiV1ConfigRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
   ApiV1RenderRoute: typeof ApiV1RenderRoute
+  ApiV1CommentsCountRoute: typeof ApiV1CommentsCountRoute
+  ApiV1CommentsRecentRoute: typeof ApiV1CommentsRecentRoute
+  ApiV1ThreadsSplatRoute: typeof ApiV1ThreadsSplatRoute
+  ApiV1CommentsIndexRoute: typeof ApiV1CommentsIndexRoute
+  ApiV1CommentsIdRepliesRoute: typeof ApiV1CommentsIdRepliesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +177,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1RenderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/comments/': {
+      id: '/api/v1/comments/'
+      path: '/api/v1/comments'
+      fullPath: '/api/v1/comments/'
+      preLoaderRoute: typeof ApiV1CommentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/comments/count': {
+      id: '/api/v1/comments/count'
+      path: '/api/v1/comments/count'
+      fullPath: '/api/v1/comments/count'
+      preLoaderRoute: typeof ApiV1CommentsCountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/comments/recent': {
+      id: '/api/v1/comments/recent'
+      path: '/api/v1/comments/recent'
+      fullPath: '/api/v1/comments/recent'
+      preLoaderRoute: typeof ApiV1CommentsRecentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/threads/$': {
+      id: '/api/v1/threads/$'
+      path: '/api/v1/threads/$'
+      fullPath: '/api/v1/threads/$'
+      preLoaderRoute: typeof ApiV1ThreadsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/comments/$id/replies': {
+      id: '/api/v1/comments/$id/replies'
+      path: '/api/v1/comments/$id/replies'
+      fullPath: '/api/v1/comments/$id/replies'
+      preLoaderRoute: typeof ApiV1CommentsIdRepliesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +220,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1ConfigRoute: ApiV1ConfigRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
   ApiV1RenderRoute: ApiV1RenderRoute,
+  ApiV1CommentsCountRoute: ApiV1CommentsCountRoute,
+  ApiV1CommentsRecentRoute: ApiV1CommentsRecentRoute,
+  ApiV1ThreadsSplatRoute: ApiV1ThreadsSplatRoute,
+  ApiV1CommentsIndexRoute: ApiV1CommentsIndexRoute,
+  ApiV1CommentsIdRepliesRoute: ApiV1CommentsIdRepliesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

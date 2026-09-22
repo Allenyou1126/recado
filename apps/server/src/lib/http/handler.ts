@@ -22,8 +22,14 @@ export type HandlerBaseContext = Pick<BaseContext, 'requestId' | 'logger'>;
  *
  * ⚠️ 框架传进来的是**整个 ctx 对象**（`{ context, request, params, pathname, next }`），
  * 注入的依赖在 `ctx.context` 里 —— 不是直接把 context 当参数传。
+ *
+ * `TParams` 由路由自己声明（动态段路由传 `{ id: string }`），默认无参路由。
  */
-export type RouteHandlerArgs<TCtx> = { context: TCtx; request: Request };
+export type RouteHandlerArgs<TCtx, TParams = Record<string, never>> = {
+  context: TCtx;
+  request: Request;
+  params: TParams;
+};
 
 export type HandlerOptions = JsonInit & {
   /** 成功时的状态码，默认 200 */
@@ -48,13 +54,18 @@ const INTERNAL_ERROR = domainError('INTERNAL_UNEXPECTED', 'Internal error');
  * });
  * ```
  */
-export function createHandler<TCtx extends HandlerBaseContext, TData, TError extends DomainError>(
-  fn: (context: TCtx, request: Request) => Promise<Result<TData, TError>>,
+export function createHandler<
+  TCtx extends HandlerBaseContext,
+  TData,
+  TError extends DomainError,
+  TParams = Record<string, never>,
+>(
+  fn: (context: TCtx, request: Request, params: TParams) => Promise<Result<TData, TError>>,
   options: HandlerOptions = {},
-): (args: RouteHandlerArgs<TCtx>) => Promise<Response> {
-  return async ({ context, request }): Promise<Response> => {
+): (args: RouteHandlerArgs<TCtx, TParams>) => Promise<Response> {
+  return async ({ context, request, params }): Promise<Response> => {
     try {
-      const result = await fn(context, request);
+      const result = await fn(context, request, params);
 
       if (result.error) {
         // 业务失败是**预期**的，按 warn 记录即可，不打堆栈

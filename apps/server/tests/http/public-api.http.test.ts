@@ -21,6 +21,10 @@ const ALLOWED_ORIGIN = 'https://blog.example.com';
 let server: RunningServer;
 let siteKey: string;
 let lenientSiteKey: string;
+/** 评论流程用站点：关掉最小发表间隔，避免测试之间互相限流 */
+let commentSiteKey: string;
+/** 限流测试用站点：60 秒最小间隔 */
+let throttledSiteKey: string;
 let db: ReturnType<typeof openTestDatabase>;
 
 beforeAll(async () => {
@@ -36,10 +40,25 @@ beforeAll(async () => {
     allowedOrigins: [],
     settings: { originPolicy: 'lenient' },
   });
+  const commentSite = await createSite(db.db, {
+    name: '评论流程站点',
+    allowedOrigins: [ALLOWED_ORIGIN],
+    settings: { minIntervalSeconds: 0 },
+  });
+  const throttledSite = await createSite(db.db, {
+    name: '限流站点',
+    allowedOrigins: [ALLOWED_ORIGIN],
+    settings: { minIntervalSeconds: 60 },
+  });
 
-  if (!strict.data || !lenient.data) throw new Error('创建测试站点失败');
+  if (!strict.data || !lenient.data || !commentSite.data || !throttledSite.data) {
+    throw new Error('创建测试站点失败');
+  }
+
   siteKey = strict.data.key;
   lenientSiteKey = lenient.data.key;
+  commentSiteKey = commentSite.data.key;
+  throttledSiteKey = throttledSite.data.key;
 
   server = await startBuiltServer();
 });
@@ -308,5 +327,189 @@ describe('GET /api/v1/config（生产构建）', () => {
     });
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe('评论公开端点（生产构建）', () => {
+  const headers = (key: string): Record<string, string> => ({
+    'X-Recado-Site': key,
+    Origin: ALLOWED_ORIGIN,
+    'content-type': 'application/json',
+  });
+
+  async function postComment(body: Record<string, unknown>, key = commentSiteKey) {
+    return fetch(url('/api/v1/comments'), {
+      method: 'POST',
+      headers: headers(key),
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('端到端：发表 → 列表 → 回复 → 计数', async () => {
+    const created = await postComment({
+      path: '/http/hello',
+      content: '第一条 **评论**',
+      nickname: 'Alice',
+      email: 'alice@example.com',
+    });
+    const createdBody = await created.json();
+
+    expect(created.status).toBe(201);
+    const rootId: string = createdBody.data.id;
+    expect(createdBody.data.content).toContain('<strong>评论</strong>');
+
+    const reply = await postComment({
+      path: '/http/hello',
+      content: '一条回复',
+      nickname: 'Bob',
+      email: 'bob@example.com',
+      parentId: rootId,
+    });
+    const replyBody = await reply.json();
+
+    expect(reply.status).toBe(201);
+    expect(replyBody.data.parentId).toBe(rootId);
+    expect(replyBody.data.rootId).toBe(rootId);
+
+    const list = await fetch(url('/api/v1/comments?path=%2Fhttp%2Fhello'), {
+      headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN },
+    });
+    const listBody = await list.json();
+
+    expect(list.status).toBe(200);
+    expect(listBody.data.total).toBe(1);
+    expect(listBody.data.comments[0].replies).toHaveLength(1);
+
+    const counts = await fetch(url('/api/v1/comments/count?paths=%2Fhttp%2Fhello,%2Fnever'), {
+      headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN },
+    });
+    const countsBody = await counts.json();
+
+    expect(countsBody.data.counts['/http/hello']).toBe(2);
+    expect(countsBody.data.counts['/never']).toBe(0);
+  });
+
+  it('公开响应不含 email / ip / user-agent', async () => {
+    await postComment({
+      path: '/http/secrets',
+      content: '敏感字段检查',
+      nickname: 'Secret',
+      email: 'secret@example.com',
+    });
+
+    const list = await fetch(url('/api/v1/comments?path=%2Fhttp%2Fsecrets'), {
+      headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN },
+    });
+    const raw = await list.text();
+
+    for (const leaked of ['email', 'secret@example.com', 'userAgent', 'user-agent', '"ip"']) {
+      expect(raw, `公开响应里出现了 ${leaked}`).not.toContain(leaked);
+    }
+  });
+
+  it('回复分页端点独立于顶层分页', async () => {
+    const created = await postComment({
+      path: '/http/paging',
+      content: '顶层',
+      nickname: 'Alice',
+      email: 'alice@example.com',
+    });
+    const rootId: string = (await created.json()).data.id;
+
+    for (let index = 0; index < 4; index += 1) {
+      await postComment({
+        path: '/http/paging',
+        content: `回复 ${index}`,
+        nickname: 'Bob',
+        email: 'bob@example.com',
+        parentId: rootId,
+      });
+    }
+
+    const replies = await fetch(
+      url(`/api/v1/comments/${rootId}/replies?pageSize=2&page=2&sort=oldest`),
+      { headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN } },
+    );
+    const body = await replies.json();
+
+    expect(replies.status).toBe(200);
+    expect(body.data.total).toBe(4);
+    expect(body.data.totalPages).toBe(2);
+    expect(body.data.replies).toHaveLength(2);
+  });
+
+  it('缺少 email 返回校验错误，而不是降级处理（决策 D18）', async () => {
+    const response = await postComment({ path: '/http/validation', content: '没有邮箱' });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.reason).toBe('VALIDATION_INVALID_BODY');
+  });
+
+  it('超长内容返回 400 + VALIDATION_CONTENT_TOO_LONG', async () => {
+    const response = await postComment({
+      path: '/http/too-long',
+      content: 'a'.repeat(20_000),
+      nickname: 'Alice',
+      email: 'alice@example.com',
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.reason).toBe('VALIDATION_CONTENT_TOO_LONG');
+  });
+
+  it('最小间隔内重复发表返回 429 + 重试间隔', async () => {
+    const first = await postComment(
+      { path: '/http/throttle', content: '第一条', nickname: 'A', email: 'a@example.com' },
+      throttledSiteKey,
+    );
+    const second = await postComment(
+      { path: '/http/throttle', content: '第二条', nickname: 'A', email: 'a@example.com' },
+      throttledSiteKey,
+    );
+    const body = await second.json();
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(429);
+    expect(body.error.reason).toBe('RATE_LIMITED_TOO_FREQUENT');
+    expect(body.error.details.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it('最近评论与线程元信息可用', async () => {
+    await postComment({
+      path: '/http/meta',
+      content: '元信息测试',
+      nickname: 'Alice',
+      email: 'alice@example.com',
+    });
+
+    const recent = await fetch(url('/api/v1/comments/recent?limit=5'), {
+      headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN },
+    });
+    const thread = await fetch(url('/api/v1/threads/http/meta'), {
+      headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN },
+    });
+
+    expect(recent.status).toBe(200);
+    expect((await recent.json()).data.length).toBeGreaterThan(0);
+
+    expect(thread.status).toBe(200);
+    expect((await thread.json()).data).toMatchObject({ path: '/http/meta', commentCount: 1 });
+  });
+
+  it('评论端点同样拒绝未声明的方法', async () => {
+    const list = await fetch(url('/api/v1/comments'), {
+      method: 'DELETE',
+      headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN },
+    });
+    const recent = await fetch(url('/api/v1/comments/recent'), {
+      method: 'POST',
+      headers: { 'X-Recado-Site': commentSiteKey, Origin: ALLOWED_ORIGIN },
+    });
+
+    expect(list.status).toBe(405);
+    expect(list.headers.get('allow')).toBe('GET, HEAD, POST, OPTIONS');
+    expect(recent.status).toBe(405);
   });
 });
