@@ -6,6 +6,7 @@
  * admins / sessions / outbox / unsubscribes / audit_logs
  */
 export * from './admins';
+export * from './labels';
 export * from './members';
 export * from './sites';
 export * from './threads';
