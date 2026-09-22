@@ -51,7 +51,11 @@ export default defineConfig({
      * 必须显式登记。启动期要做的事（环境变量校验、邮件 worker）都放在 `server/plugins/`。
      */
     nitro({
-      plugins: ['server/plugins/validate-env.ts', 'server/plugins/outbox-worker.ts'],
+      plugins: [
+        'server/plugins/validate-env.ts',
+        'server/plugins/lifecycle.ts',
+        'server/plugins/outbox-worker.ts',
+      ],
 
       /**
        * 关闭 wasm 导出条件。

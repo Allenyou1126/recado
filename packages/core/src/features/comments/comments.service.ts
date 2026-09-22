@@ -399,6 +399,14 @@ export async function checkRateLimit(
 }
 
 /**
+ * 批量重渲染用：直接更新渲染结果（原文不变）。
+ *
+ * 与「管理员编辑评论」的区别：这里**不改原文**，只是用当前管线重放 HTML ——
+ * 双存设计让解析器升级能惠及历史评论。
+ */
+export { updateCommentContent } from './comments.data';
+
+/**
  * 后台评论列表：全维度筛选（站点 / 路径 / 状态 / 关键词 / 时间范围）。
  *
  * 关键词查的是 `content_md`（**原文**），不是渲染后的 HTML —— 一期用 ILIKE，

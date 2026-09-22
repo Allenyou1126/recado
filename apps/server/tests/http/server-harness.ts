@@ -174,7 +174,18 @@ export async function startBuiltServer(): Promise<RunningServer> {
           resolve();
           return;
         }
-        child.once('exit', () => resolve());
+
+        // SIGTERM 走的是 T9.6 的优雅停机路径（等待在途请求 → 关闭连接池）。
+        // 这里给足时间；超时未退出则强杀，避免测试挂住。
+        const timer = setTimeout(() => {
+          child.kill('SIGKILL');
+        }, 15_000);
+
+        child.once('exit', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+
         child.kill('SIGTERM');
       }),
   };

@@ -2,8 +2,9 @@
 
 > 自托管、多站点、Headless 的评论系统 —— 基于 Node.js 与 TanStack Start，参考 [Waline](https://waline.js.org) 的产品形态设计。
 
-**当前状态：设计阶段，尚无实现代码。** 需求与规范已完成，技术设计与实现尚未开始。
-详见 [`.specs/`](./.specs/)。
+**当前状态：里程碑 1 主体已实现**（评论读写、渲染管线、审核与声誉、OIDC 登录、
+管理台、邮件通知、SDK）。部署方式见 [`docs/deployment.md`](./docs/deployment.md)，
+实现进度见 [`.specs/development-plan.md`](./.specs/development-plan.md) §4。
 
 ---
 
@@ -102,6 +103,7 @@ recado/
 | [`.specs/decision-log.md`](./.specs/decision-log.md) | 需求确认记录（18 项问答归档） |
 | [`.specs/development-standards.md`](./.specs/development-standards.md) | 开发规范 |
 | [`.specs/research/`](./.specs/research/) | Waline 功能盘点与 TanStack Start 实测报告 |
+| [`docs/deployment.md`](./docs/deployment.md) | **部署指南**：环境变量、ZITADEL 接入、SPF/DKIM/DMARC、威胁模型、故障排查 |
 | [`AGENTS.md`](./AGENTS.md) | 面向 AI 编码代理的约束与指引 |
 
 ---

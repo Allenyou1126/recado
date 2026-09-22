@@ -42,6 +42,16 @@ ENV PORT=3000
 # Nitro 的产物是自包含的（.output 内含运行所需依赖）
 COPY --from=build /app/apps/server/.output ./.output
 
+# 非 root 运行：容器逃逸时把损失限制在最小范围
+# （node 镜像自带 uid/gid 1000 的 node 用户，直接复用）
+RUN chown -R node:node /app
+USER node
+
 EXPOSE 3000
+
+# 用 /readyz 而不是 /healthz：它会在数据库不可用时返回 503，
+# 编排系统据此把流量摘掉，而不是继续往一个跑不动的实例上打
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", ".output/server/index.mjs"]

@@ -18,7 +18,18 @@
 
 import { parseArgs } from 'node:util';
 
-import { createSite, resolveAccessScope } from '@recado/core';
+import {
+  createSite,
+  getSiteById,
+  listAdminComments,
+  listOutbox,
+  renderMarkdown,
+  renderOptionsFromSettings,
+  resolveAccessScope,
+  retryOutboxItem,
+  siteSettings,
+  updateCommentContent,
+} from '@recado/core';
 import { createDbClient, type DbClient } from '@recado/db';
 import { isErr } from '@recado/shared';
 
@@ -147,8 +158,198 @@ const diagnoseCommand: Command = {
   },
 };
 
+/**
+ * `admin:grant` —— 打印如何为某人授予权限。
+ *
+ * ⚠️ 这个命令**不写数据库**：本系统不存角色授予关系（决策 D15），
+ * 权限完全由 IdP 角色决定。因此「授予管理员」这件事只能在 IdP 侧做 ——
+ * 命令的价值是把「该配什么角色、站点 UUID 是多少」直接算给操作者看，
+ * 免得他去翻文档拼字符串。
+ */
+const adminGrant: Command = {
+  summary: '生成 IdP 角色名（本系统不存授权，只能在 IdP 侧授予）',
+  usage:
+    'admin:grant (--owner | --site <站点 UUID>) [--email <邮箱>]\n' +
+    '  --owner          打印实例级管理员角色名\n' +
+    '  --site <UUID>    打印该站点管理员角色名（会校验站点是否存在）',
+  async run(_positionals, options) {
+    const env = getEnv();
+    const prefix = env.OIDC_ROLE_PREFIX;
+
+    if (options.owner === true) {
+      const role = `${prefix}.OWNER`;
+      process.stdout.write(
+        [
+          `请在 IdP 中创建角色 ${role}，并授予目标账号：`,
+          '',
+          `  角色名：${role}`,
+          '  效果：  该账号可以管理全部站点',
+          '',
+          '授权完成后，让他重新登录管理台（本系统不缓存角色授予关系）。',
+          '',
+        ].join('\n'),
+      );
+      return 0;
+    }
+
+    const siteId = stringOption(options.site);
+    if (siteId === undefined) {
+      process.stderr.write('需要 --owner 或 --site <站点 UUID>\n\n');
+      return 1;
+    }
+
+    return withDb(async ({ db }) => {
+      const site = await getSiteById(db, siteId);
+
+      if (!site) {
+        process.stderr.write(`找不到站点 ${siteId}\n`);
+        return 1;
+      }
+
+      const role = `${prefix}.ADMIN.${site.id}`;
+      process.stdout.write(
+        [
+          `请在 IdP 中创建角色 ${role}，并授予目标账号：`,
+          '',
+          `  站点：  ${site.name}（${site.id}）`,
+          `  角色名：${role}`,
+          '  效果：  仅能管理该站点',
+          '',
+          '提示：站点标识用的是 UUID，改名不影响这条授权（决策 D17）。',
+          '',
+        ].join('\n'),
+      );
+
+      return 0;
+    });
+  },
+};
+
+/**
+ * `comment:rerender` —— 批量重渲染历史评论。
+ *
+ * 存在的意义正是「原文与 HTML 双存」这个设计的回报：
+ * 解析器或站点渲染配置变更后，可以离线把历史评论重放一遍，
+ * 而不是让它永远停留在旧渲染结果上（M4「内容重放」）。
+ */
+const commentRerender: Command = {
+  summary: '用当前渲染管线重放历史评论的 HTML（双存设计的回报）',
+  usage:
+    'comment:rerender --site <站点 UUID> [--limit 200] [--path /posts/x] [--dry-run]\n' +
+    '  --site     目标站点 UUID\n' +
+    '  --limit    本次最多处理多少条（默认 200）\n' +
+    '  --path     只处理该路径下的评论\n' +
+    '  --dry-run  只统计会改动多少条，不写库',
+  async run(_positionals, options) {
+    const siteId = stringOption(options.site);
+    if (siteId === undefined) {
+      process.stderr.write('需要 --site <站点 UUID>\n\n');
+      return 1;
+    }
+
+    const limit = Number(stringOption(options.limit) ?? '200');
+    const path = stringOption(options.path);
+    const dryRun = options['dry-run'] === true;
+
+    return withDb(async ({ db }) => {
+      const site = await getSiteById(db, siteId);
+      if (!site) {
+        process.stderr.write(`找不到站点 ${siteId}\n`);
+        return 1;
+      }
+
+      const options_ = renderOptionsFromSettings(siteSettings(site));
+      const { rows } = await listAdminComments(
+        { db, site },
+        {
+          path,
+          sort: 'oldest',
+          limit: Number.isFinite(limit) && limit > 0 ? limit : 200,
+          offset: 0,
+        },
+      );
+
+      let changed = 0;
+      let failed = 0;
+
+      for (const row of rows) {
+        const rendered = await renderMarkdown(row.contentMd, options_);
+
+        if (rendered.error) {
+          failed += 1;
+          process.stderr.write(`跳过 ${row.id}：${rendered.error.reason}\n`);
+          continue;
+        }
+
+        if (rendered.data.html === row.contentHtml) continue;
+
+        changed += 1;
+
+        if (!dryRun) {
+          await updateCommentContent(db, site.id, row.id, {
+            md: row.contentMd,
+            html: rendered.data.html,
+            bytes: rendered.data.bytes,
+          });
+        }
+      }
+
+      process.stdout.write(
+        [
+          `扫描 ${rows.length} 条，${dryRun ? '需要更新' : '已更新'} ${changed} 条，失败 ${failed} 条。`,
+          dryRun ? '（--dry-run：未写库）' : '',
+          '',
+        ]
+          .filter((line) => line.length > 0)
+          .join('\n'),
+      );
+
+      return failed > 0 ? 1 : 0;
+    });
+  },
+};
+
+/** `outbox:retry` —— 把失败邮件放回队列（不依赖管理台） */
+const outboxRetry: Command = {
+  summary: '重发失败邮件（不依赖管理台）',
+  usage:
+    'outbox:retry --site <站点 UUID> [--id <outbox id>]\n' +
+    '  --site  目标站点 UUID\n' +
+    '  --id    只重发这一条；省略则重发该站点全部 failed',
+  async run(_positionals, options) {
+    const siteId = stringOption(options.site);
+    if (siteId === undefined) {
+      process.stderr.write('需要 --site <站点 UUID>\n\n');
+      return 1;
+    }
+
+    const id = stringOption(options.id);
+
+    return withDb(async ({ db }) => {
+      if (id !== undefined) {
+        const retried = await retryOutboxItem(db, siteId, id);
+        process.stdout.write(retried ? '已放回队列。\n' : '该任务不是 failed 状态，未处理。\n');
+        return retried ? 0 : 1;
+      }
+
+      const { rows } = await listOutbox(db, siteId, { status: 'failed', limit: 500, offset: 0 });
+
+      let retried = 0;
+      for (const row of rows) {
+        if (await retryOutboxItem(db, siteId, row.id)) retried += 1;
+      }
+
+      process.stdout.write(`已把 ${retried} 条失败任务放回队列。\n`);
+      return 0;
+    });
+  },
+};
+
 const commands: Record<string, Command> = {
+  'admin:grant': adminGrant,
   'auth:diagnose': diagnoseCommand,
+  'comment:rerender': commentRerender,
+  'outbox:retry': outboxRetry,
   'site:create': {
     summary: '创建站点并签发 site key（管理台就绪前的 bootstrap 手段）',
     usage:
@@ -238,6 +439,12 @@ async function main(argv: string[]): Promise<number> {
       token: { type: 'string' },
       roles: { type: 'string' },
       json: { type: 'boolean' },
+      owner: { type: 'boolean' },
+      site: { type: 'string' },
+      id: { type: 'string' },
+      limit: { type: 'string' },
+      path: { type: 'string' },
+      'dry-run': { type: 'boolean' },
     },
     allowPositionals: true,
     strict: true,

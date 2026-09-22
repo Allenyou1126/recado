@@ -749,3 +749,25 @@ describe('管理台页面（生产构建）', () => {
     expect(response.headers.get('allow')).toBe('POST, OPTIONS');
   });
 });
+
+describe('探针（T9.6）', () => {
+  it('/healthz 不依赖数据库，始终 200', async () => {
+    const response = await fetch(url('/api/v1/health'));
+    expect(response.status).toBe(200);
+  });
+
+  it('/readyz 在数据库可用时返回 200', async () => {
+    const response = await fetch(url('/readyz'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.status).toBe('ready');
+  });
+
+  it('/readyz 拒绝未声明的方法', async () => {
+    const response = await fetch(url('/readyz'), { method: 'POST' });
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get('allow')).toBe('GET, HEAD, OPTIONS');
+  });
+});
