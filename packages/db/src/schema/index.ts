@@ -6,6 +6,7 @@
  * admins / sessions / outbox / unsubscribes / audit_logs
  */
 export * from './admins';
+export * from './audit-logs';
 export * from './comment-mentions';
 export * from './comments';
 export * from './labels';
