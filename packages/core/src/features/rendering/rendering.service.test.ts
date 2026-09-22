@@ -110,3 +110,34 @@ describe('代码高亮（T2.2）', () => {
     expect(html).toContain('&#x3C;');
   });
 });
+
+describe('数学公式（T2.3）', () => {
+  it('行内公式渲染为自包含的 SVG', async () => {
+    const { html } = await render('质能方程 $E = mc^2$ 很简洁');
+
+    expect(html).toContain('<mjx-container');
+    expect(html).toContain('<svg');
+    expect(html).not.toContain('$E = mc^2$');
+  });
+
+  it('块级公式同样渲染', async () => {
+    const { html } = await render('$$\n\\int_0^1 x^2 dx\n$$');
+
+    expect(html).toContain('<mjx-container');
+    expect(html).toContain('display="true"');
+  });
+
+  it('公式里的 HTML 不会逃逸成真元素', async () => {
+    const { html } = await render('$\\text{<script>alert(1)</script>}$');
+
+    expect(html).not.toContain('<script>');
+  });
+
+  it('math=false 时不解析公式，按普通文本处理', async () => {
+    const result = await renderMarkdown('质能方程 $E = mc^2$', { math: false });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.html).not.toContain('<mjx-container');
+    expect(result.data?.html).toContain('$E = mc^2$');
+  });
+});

@@ -10,26 +10,34 @@
  * ```
  * remark-parse             Markdown → mdast
  *   remark-gfm             GFM 扩展
+ *   remark-math            `$…$` / `$$…$$` → math 节点
  *   remark-rehype          mdast → hast（allowDangerousHtml 默认关闭：原文里的
  *                          原始 HTML 根本不会进入 AST，这是第一道闸门）
- *   rehype-sanitize        白名单消毒（**用默认 schema，不为渲染插件放宽任何规则**）
+ *   rehype-sanitize        白名单消毒（**默认 schema，一条都不放宽**）
+ *   [rehype-mathjax]       数学公式（T2.3，可信插件；必须排在 Shiki 之前，见下）
  *   [rehype-shiki]         代码高亮（T2.2，可信插件）
- *   [rehype-mathjax]       数学公式（T2.3，可信插件）
  *   rehype-stringify       hast → HTML
  * ```
  *
  * 为什么消毒放在「用户内容转换之后、可信插件之前」而不是最后：
  * Shiki 的 `<span style="color:…">` 与 MathJax 的 SVG 需要大量元素与属性，
  * 放到最后就必须放宽白名单，反而扩大攻击面。用户内容在进入这些插件之前
- * 已经过默认白名单消毒，而原始 HTML 从一开始就进不了 AST —— 因此
+ * 已经过白名单消毒，而原始 HTML 从一开始就进不了 AST —— 因此
  * 「消毒在最外层」与「消毒在最严格处」在这里是同一个位置。
+ *
+ * ⚠️ MathJax 必须排在 Shiki **之前**：remark-math 的块级公式经 remark-rehype
+ * 会变成 `<pre><code class="language-math">`，与代码块同形。若 Shiki 先跑，
+ * 它会把这个代码块当成 `math` 语言去高亮并替换掉外层 `<pre>`，MathJax 就再也
+ * 找不到目标节点（未知语言会静默退化成纯文本，这是个很难察觉的坑）。
  */
 
 import { err, ok, type Result } from '@recado/shared';
 import rehypeShiki from '@shikijs/rehype';
+import rehypeMathjax from 'rehype-mathjax/svg';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import type { BuiltinLanguage } from 'shiki';
@@ -76,8 +84,17 @@ export function buildProcessor(options: RenderOptions) {
     processor.use(remarkGfm);
   }
 
+  if (options.math) {
+    processor.use(remarkMath);
+  }
+
   processor.use(remarkRehype);
   processor.use(rehypeSanitize);
+
+  if (options.math) {
+    // SVG 输出是自包含的：不依赖 MathJax 的 CSS 或字体，适合 Headless 交付
+    processor.use(rehypeMathjax);
+  }
 
   if (options.codeHighlight) {
     processor.use(rehypeShiki, {
