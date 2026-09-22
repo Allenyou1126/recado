@@ -1,0 +1,67 @@
+# Recado 本地编排：PostgreSQL + 应用
+#
+# 用法：
+#   docker compose -f docker/compose.yaml up -d postgres   # 只起数据库（开发/测试）
+#   docker compose -f docker/compose.yaml up -d --build    # 起数据库 + 应用
+#
+# ⚠️ 数据库迁移是**独立部署步骤**，不在应用启动时自动执行
+#    （见 .specs/requirements.md §8.5）：
+#     docker compose -f docker/compose.yaml run --rm migrate
+#
+name: recado
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recado}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-recado}
+      POSTGRES_DB: ${POSTGRES_DB:-recado}
+    # 端口映射仅为本地开发 / 集成测试需要；生产部署可以整段删掉，
+    # 让数据库只留在 compose 网络内。
+    ports:
+      - '${POSTGRES_PORT:-55432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # 用 pg_isready 而不是 tcp 探测：进程起来了但还在做崩溃恢复时，
+      # 端口是通的、数据库却还不可用。
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-recado} -d ${POSTGRES_DB:-recado}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    # .env 缺失时不阻塞启动（Compose 会直接读同目录/项目目录下的 .env 做变量替换）
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      # 容器内直连 postgres 服务，不走宿主机端口映射
+      DATABASE_URL: postgres://${POSTGRES_USER:-recado}:${POSTGRES_PASSWORD:-recado}@postgres:5432/${POSTGRES_DB:-recado}
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  postgres-data:

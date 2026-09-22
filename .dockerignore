@@ -1,0 +1,25 @@
+# 构建上下文排除项 —— 减小上下文体积，避免把本机产物与密钥送进镜像
+.git
+.gitignore
+.githooks
+.github
+
+node_modules
+**/node_modules
+**/.output
+**/.nitro
+**/.tanstack
+**/.vite
+**/dist
+**/coverage
+**/*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.tmp
+.cache
+.specs
+docker/compose.yaml
+*.log
