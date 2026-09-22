@@ -7,7 +7,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { evaluateOrigin, matchesAllowedOrigin, originPolicyOf } from './sites.service';
+import {
+  evaluateOrigin,
+  matchesAllowedOrigin,
+  normalizeAllowedOrigins,
+  originPolicyOf,
+} from './sites.service';
 
 const site = (allowedOrigins: string[], settings: Record<string, unknown> = {}) => ({
   allowedOrigins,
@@ -111,5 +116,64 @@ describe('evaluateOrigin', () => {
 
     expect(result.error?.reason).toBe('FORBIDDEN_ORIGIN_NOT_ALLOWED');
     expect(result.error?.details).toEqual({ origin: 'https://evil.example.net' });
+  });
+});
+
+describe('来源白名单匹配矩阵（T3.3）', () => {
+  const cases: ReadonlyArray<[patterns: string[], origin: string, expected: boolean]> = [
+    // 精确域
+    [['example.com'], 'https://example.com', true],
+    [['example.com'], 'http://example.com', true],
+    [['example.com'], 'https://www.example.com', false],
+    [['www.example.com'], 'https://www.example.com', true],
+    // 协议限定
+    [['https://example.com'], 'https://example.com', true],
+    [['https://example.com'], 'http://example.com', false],
+    [['http://example.com'], 'http://example.com', true],
+    // 通配符
+    [['*.example.com'], 'https://blog.example.com', true],
+    [['*.example.com'], 'https://a.b.example.com', true],
+    [['*.example.com'], 'https://example.com', false],
+    [['*.example.com'], 'https://example.com.evil.net', false],
+    [['*.example.com'], 'https://notexample.com', false],
+    // 端口
+    [['http://localhost:3000'], 'http://localhost:3000', true],
+    [['http://localhost:3000'], 'http://localhost:3001', false],
+    [['http://localhost:3000'], 'http://localhost', false],
+    [['https://example.com:443'], 'https://example.com', true],
+    // 大小写与空白
+    [['  EXAMPLE.com '], 'https://example.com', true],
+    [['example.com'], '  https://example.com  ', true],
+    // 多条命中一条即可
+    [['a.example.com', 'b.example.com'], 'https://b.example.com', true],
+    // 畸形输入
+    [['example.com'], 'null', false],
+    [['example.com'], '', false],
+    [['example.com'], 'https://', false],
+  ];
+
+  it.each(cases)('%j 对 %s => %s', (patterns, origin, expected) => {
+    expect(matchesAllowedOrigin(patterns, origin)).toBe(expected);
+  });
+
+  it('协议相对地址（//host）按站外处理', () => {
+    expect(matchesAllowedOrigin(['example.com'], '//example.com')).toBe(true);
+  });
+});
+
+describe('normalizeAllowedOrigins', () => {
+  it('去空白、转小写并去重', () => {
+    expect(normalizeAllowedOrigins([' Example.com ', 'example.com', '*.Example.org'])).toEqual([
+      'example.com',
+      '*.example.org',
+    ]);
+  });
+
+  it('丢弃空串与格式非法的条目', () => {
+    expect(normalizeAllowedOrigins(['', '   ', 'https://a.example.com/path'])).toEqual([]);
+  });
+
+  it('保留带协议与端口的写法', () => {
+    expect(normalizeAllowedOrigins(['http://localhost:3000'])).toEqual(['http://localhost:3000']);
   });
 });

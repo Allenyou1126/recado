@@ -14,6 +14,7 @@ import { err, ok, type Result } from '@recado/shared';
 import { findSiteByKey, insertSite, updateSiteKey } from './sites.data';
 import { SiteErrors, type SiteError } from './sites.errors';
 import {
+  AllowedOriginSchema,
   parseSiteSettings,
   type CreateSiteInput,
   type OriginPolicy,
@@ -58,6 +59,28 @@ export async function resolveActiveSiteByKey(
   }
 
   return ok(site);
+}
+
+/**
+ * 归一化来源白名单条目：去空白、转小写。
+ *
+ * 匹配本身已经大小写不敏感，归一化是为了让后台展示与审计日志里的一致，
+ * 并顺手去掉重复项与空串。格式非法的条目直接丢弃 —— 让一条写错的配置
+ * 静默失效，好过让它以「看起来像配了」的形态留在库里。
+ */
+export function normalizeAllowedOrigins(patterns: readonly string[]): string[] {
+  const normalized = new Set<string>();
+
+  for (const pattern of patterns) {
+    const trimmed = pattern.trim().toLowerCase();
+
+    if (trimmed.length === 0) continue;
+    if (!AllowedOriginSchema.safeParse(trimmed).success) continue;
+
+    normalized.add(trimmed);
+  }
+
+  return [...normalized];
 }
 
 type ParsedOrigin = {
@@ -210,6 +233,7 @@ export async function createSite(
   input: CreateSiteInput,
 ): Promise<Result<Site, SiteError>> {
   const settings = { ...parseSiteSettings({}), ...input.settings };
+  const allowedOrigins = normalizeAllowedOrigins(input.allowedOrigins);
 
   for (let attempt = 0; attempt < SITE_KEY_MAX_ATTEMPTS; attempt += 1) {
     const key = generateSiteKey();
@@ -220,7 +244,7 @@ export async function createSite(
     const site = await insertSite(db, {
       key,
       name: input.name,
-      allowedOrigins: input.allowedOrigins,
+      allowedOrigins,
       settings,
     });
 

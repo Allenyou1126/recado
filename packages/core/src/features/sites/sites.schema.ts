@@ -100,21 +100,55 @@ export function parseSiteSettings(raw: unknown): SiteSettings {
   return parsed.success ? parsed.data : SiteSettingsSchema.parse({});
 }
 
+/** 裸域名 / 通配域名 / 带端口，如 `example.com`、`*.example.com`、`localhost:3000` */
+const HOST_PATTERN =
+  /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?$/i;
+
+/** 带协议的完整来源，如 `https://example.com`、`http://localhost:3000` */
+const SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
+
 /**
  * 来源白名单条目。
  *
- * 支持精确域、`*.example.com` 通配，以及带协议/端口的完整来源。
- * 这里只做「形态」校验（空串、通配符位置明显错误），具体匹配见 sites.service.ts。
+ * 支持两种写法（大小写不敏感，落库前会归一化）：
+ *
+ * - **裸域**：`example.com`、`*.example.com`、`localhost:3000`
+ * - **完整来源**：`https://example.com`、`http://localhost:3000`
+ *
+ * 明确拒绝带路径/查询/片段的写法（`https://example.com/blog`）：
+ * 白名单匹配的是**来源**，路径从来不在比较范围内，允许它只会制造「配了却不生效」。
+ * 通配符只能是最左侧一个标签。
  */
 export const AllowedOriginSchema = z
   .string()
   .min(1)
   .max(253)
-  .refine((value) => !value.includes('/') || value.includes('://'), {
-    message: '来源白名单条目不能带路径，请填写域名或完整来源（含协议）',
-  })
-  .refine((value) => !value.trim().includes('*') || value.trim().startsWith('*.'), {
-    message: '通配符只能出现在最左侧一个标签，形如 *.example.com',
+  .superRefine((value, ctx) => {
+    const trimmed = value.trim();
+
+    if (SCHEME_PATTERN.test(trimmed)) {
+      let url: URL;
+      try {
+        url = new URL(trimmed);
+      } catch {
+        ctx.addIssue({ code: 'custom', message: '不是合法的来源（URL 解析失败）' });
+        return;
+      }
+
+      if (url.pathname !== '/' || url.search !== '' || url.hash !== '') {
+        ctx.addIssue({ code: 'custom', message: '来源白名单条目不能带路径、查询串或片段' });
+        return;
+      }
+
+      if (!HOST_PATTERN.test(url.host)) {
+        ctx.addIssue({ code: 'custom', message: '主机名格式不正确（通配符只能是最左侧一个标签）' });
+      }
+      return;
+    }
+
+    if (!HOST_PATTERN.test(trimmed)) {
+      ctx.addIssue({ code: 'custom', message: '域名格式不正确，如 example.com 或 *.example.com' });
+    }
   });
 
 /** 创建站点入参 */
