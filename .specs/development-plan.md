@@ -5,7 +5,7 @@
 | 版本 | v1.0 |
 | 范围 | 需求主文档 §9「里程碑 1 — 可用内核」的全部 P0 项 |
 | 配套 | `requirements.md`（要做什么）、`decision-log.md`（为什么）、`development-standards.md`（怎么写） |
-| 状态 | 🔄 进行中（阶段 0–8 已完成） |
+| 状态 | ✅ 里程碑 1（阶段 0–9）全部完成 |
 
 ---
 
@@ -57,6 +57,8 @@
   actor/siteScope/CSRF 中间件、auth:diagnose CLI
 - ✅ 阶段 8 管理台（见 §4）：_authed 布局、概览、评论管理（筛选/批量/部分失败明细）、
   成员与标签、站点与 key 轮换、邮件与发信测试、审计日志、来源自检、交互规范
+- ✅ 阶段 9 SDK、OpenAPI 与部署文档（见 §4）：OpenAPI 3.1 + 文档页、
+  `@recado/client`、非 root 镜像与探针、部署指南与 ZITADEL 接入、CLI 收尾、优雅停机
 
 ### 未完成
 
@@ -151,7 +153,7 @@
 - [x] 阶段 6 · 邮件通知与 outbox worker
 - [x] 阶段 7 · OIDC 认证与会话
 - [x] 阶段 8 · 管理台
-- [ ] 阶段 9 · SDK、OpenAPI 与部署文档
+- [x] 阶段 9 · SDK、OpenAPI 与部署文档
 
 ---
 
@@ -514,10 +516,11 @@
 
 ### 验收
 
-- [ ] `docker compose up` 全新环境可跑通（含迁移）
-- [ ] SDK 能完成发表、列表、回复、计数四个核心操作
-- [ ] OpenAPI 文档与实际 API 逐项一致
-- [ ] 部署文档能让人从零完成一次部署，包括 IdP 侧配置
+- [x] `docker compose up` 全新环境可跑通（含迁移）
+      （阶段 0/1 已实测；本轮补上非 root 与 /readyz 健康检查）
+- [x] SDK 能完成发表、列表、回复、计数四个核心操作
+- [x] OpenAPI 文档与实际 API 逐项一致（有测试逐项比对路径集合）
+- [x] 部署文档能让人从零完成一次部署，包括 IdP 侧配置（docs/deployment.md）
 
 ---
 
