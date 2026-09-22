@@ -540,23 +540,55 @@
 
 ## 6. 完成定义（Definition of Done）
 
-阶段 0–9 全部勾选后，`requirements.md` §11 的验收标准应全部满足。逐条复核：
+阶段 0–9 全部完成，`requirements.md` §11 的验收标准逐条复核如下。
+标记方式：✅ 已实测通过（附验证方式）；📌 由自动化测试覆盖；📄 由文档交付。
 
-- [ ] 全新环境 `docker compose up` 后应用与数据库正常启动，`/readyz` 返回 200
-- [ ] 在 ZITADEL 中创建并授予 `PREFIX.OWNER` 角色后可登录管理台；无角色用户被拒绝且不产生会话
-- [ ] 持有 `PREFIX.ADMIN.<站点 UUID>` 角色的账号只能看到被授权的站点
-- [ ] 脚本通过 client credentials 取得 access token 后可调用管理 API
-- [ ] 创建站点后拿到 site key（站点标识为 UUID，后台展示名为 `name`）
-- [ ] 用一个真实的静态博客页面通过 SDK/HTTP 成功发表、拉取、回复评论
-- [ ] Markdown、表情、Shiki 代码高亮、MathJax 公式在服务端正确渲染，XSS 载荷被 `rehype-sanitize` 消毒
-- [ ] 后台可按站点 / 路径 / 状态 / 关键词筛选评论，并完成批量通过、标记垃圾、删除
-- [ ] 将某条评论标记为垃圾后，该邮箱在本站点的下一条评论自动进入待审核
-- [ ] 邮箱标签能在评论 API 响应中返回并正确展示
-- [ ] 在后台按站点配置 SMTP 后，发表评论可触发站长与父评论作者的邮件；退订链接可用且生效
-- [ ] SMTP 不可用时评论发布仍然成功，失败任务可在后台重发
-- [ ] 跨域请求按站点域名白名单放行/拒绝；无来源头请求按 `originPolicy` 分别表现 403 与放行
-- [ ] 对只读端点发送 `PUT` 返回 **405 + `Allow` 头**，而不是 `200 text/html`
-- [ ] **在生产构建下**验证 CORS 预检返回正确的 `Access-Control-Allow-Origin`
-- [ ] OpenAPI 文档与实际 API 完全一致
-- [ ] 核心领域逻辑单元测试与 API 集成测试通过
-- [ ] 部署指南、OIDC（ZITADEL）接入指南、API 文档齐备
+- [x] 全新环境 `docker compose up` 后应用与数据库正常启动，`/readyz` 返回 200
+      （✅ 实测：两个容器均 healthy，`/readyz` 与 `/healthz` 均 200）
+- [x] 在 ZITADEL 中创建并授予 `PREFIX.OWNER` 角色后可登录管理台；无角色用户被拒绝且不产生会话
+      （📌 auth 集成测试覆盖「无匹配角色 → 不建会话、不写 admins 行」；
+      📄 docs/deployment.md 第 0 步与第 5 步给出 IdP 侧配置与 `auth:diagnose` 排障命令）
+- [x] 持有 `PREFIX.ADMIN.<站点 UUID>` 角色的账号只能看到被授权的站点
+      （📌 `scopeAllowsSite` + siteScope 中间件 + 管理端 HTTP 403 测试）
+- [x] 脚本通过 client credentials 取得 access token 后可调用管理 API
+      （📌 Bearer 路径每次验签现算角色；`authorizeBearer` 有集成测试）
+- [x] 创建站点后拿到 site key（站点标识为 UUID，后台展示名为 `name`）
+      （✅ 实测：`pnpm cli site:create` 输出 rc_ 开头的 key 与 UUID）
+- [x] 用一个真实的静态博客页面通过 SDK/HTTP 成功发表、拉取、回复评论
+      （✅ 实测：对 compose 部署跑通「发表 → 回复 → 列表 → 计数 → 线程元信息」，
+      并验证跨域预检 204 + 正确的 `Access-Control-Allow-Origin`）
+- [x] Markdown、表情、Shiki 代码高亮、MathJax 公式在服务端正确渲染，XSS 载荷被消毒
+      （📌 26 条 XSS payload 与渲染矩阵测试 + 生产构建下的 `/api/v1/render` 实测）
+- [x] 后台可按站点 / 路径 / 状态 / 关键词筛选评论，并完成批量通过、标记垃圾、删除
+      （📌 管理端列表与批量接口测试；📌 管理台评论页提供筛选、单条与批量操作）
+- [x] 将某条评论标记为垃圾后，该邮箱在本站点的下一条评论自动进入待审核
+      （📌 moderation 集成测试逐条断言）
+- [x] 邮箱标签能在评论 API 响应中返回并正确展示
+      （📌 `toPublicComment` 带 labels；📌 成员列表附带标签）
+- [x] 在后台按站点配置 SMTP 后，发表评论可触发站长与父评论作者的邮件；退订链接可用且生效
+      （📌 notifications 集成测试：站长通知、回复通知、退订后不再入队）
+- [x] SMTP 不可用时评论发布仍然成功，失败任务可在后台重发
+      （📌 评论写入只入队；📌 后台「邮件」页有重发按钮 + `outbox:retry` CLI）
+- [x] 跨域请求按站点域名白名单放行/拒绝；无来源头请求按 `originPolicy` 分别表现 403 与放行
+      （📌 生产构建下的 HTTP 测试覆盖三种情形）
+- [x] 对只读端点发送 `PUT` 返回 **405 + `Allow` 头**，而不是 `200 text/html`
+      （📌 端点 × 方法矩阵测试）
+- [x] **在生产构建下**验证 CORS 预检返回正确的 `Access-Control-Allow-Origin`
+      （📌 tests/http 拉起的是 `.output` 产物，不是 `vite dev`）
+- [x] OpenAPI 文档与实际 API 完全一致
+      （📌 测试逐项比对「文档路径集合 == 实现路由集合」）
+- [x] 核心领域逻辑单元测试与 API 集成测试通过
+      （✅ 356 项测试：core 138、server 201、sdk 12、db 5）
+- [x] 部署指南、OIDC（ZITADEL）接入指南、API 文档齐备
+      （📄 docs/deployment.md 覆盖部署、ZITADEL 接入、SPF/DKIM/DMARC、威胁模型与排障；
+      📄 `/docs` 提供可交互 API 文档）
+
+### 与规格的偏差（均为实测驱动，已同步文档）
+
+| # | 偏差 | 原因 |
+| --- | --- | --- |
+| 1 | 不做 `Register.server.requestContext` 模块增强 | 框架读取的 `Register` 定义在 `@tanstack/router-core`；且 Node 入口不传 request context，增强只会造成类型谎言（development-standards.md §4.1 已更新） |
+| 2 | 错误信封字段用 `reason` 而非 `code` | 与 `shared` 的 `DomainError` 及开发规范 §6.2 对齐（requirements.md §6 已更正） |
+| 3 | Shiki 用 JavaScript 正则引擎 | Oniguruma WASM 会让 Nitro 服务端构建失败；JS 引擎同样按需加载语言包 |
+| 4 | 管理台 UI 组件本地实现而非引入 shadcn/ui CLI | shadcn 的本质就是「组件源码进仓库」；行为要求（键盘可达、二次确认并明示影响范围、中文）全部满足，且少一层 radix 依赖 |
+| 5 | 执行顺序：阶段 5 的领域层 → 阶段 7 → 阶段 5 的管理端接口 → 阶段 6 | 管理端接口依赖阶段 7 的 actor/siteScope；先写临时鉴权等于返工 |
