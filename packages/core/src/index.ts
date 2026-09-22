@@ -21,3 +21,4 @@
  */
 
 export * from './features/sites/sites.errors';
+export * from './features/sites/sites.service';

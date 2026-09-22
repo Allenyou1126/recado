@@ -17,6 +17,14 @@ import { createdResponse, errorResponse, okResponse, type JsonInit } from './res
 /** 至少需要 requestId 与 logger 才能兜住异常并留下可关联的日志 */
 export type HandlerBaseContext = Pick<BaseContext, 'requestId' | 'logger'>;
 
+/**
+ * Server Route 交给处理器的入参形状。
+ *
+ * ⚠️ 框架传进来的是**整个 ctx 对象**（`{ context, request, params, pathname, next }`），
+ * 注入的依赖在 `ctx.context` 里 —— 不是直接把 context 当参数传。
+ */
+export type RouteHandlerArgs<TCtx> = { context: TCtx };
+
 export type HandlerOptions = JsonInit & {
   /** 成功时的状态码，默认 200 */
   successStatus?: number;
@@ -43,15 +51,15 @@ const INTERNAL_ERROR = domainError('INTERNAL_UNEXPECTED', 'Internal error');
 export function createHandler<TCtx extends HandlerBaseContext, TData, TError extends DomainError>(
   fn: (context: TCtx) => Promise<Result<TData, TError>>,
   options: HandlerOptions = {},
-): (context: TCtx) => Promise<Response> {
-  return async (context: TCtx): Promise<Response> => {
+): (args: RouteHandlerArgs<TCtx>) => Promise<Response> {
+  return async ({ context }): Promise<Response> => {
     try {
       const result = await fn(context);
 
       if (result.error) {
         // 业务失败是**预期**的，按 warn 记录即可，不打堆栈
         context.logger.warn(
-          { requestId: context.requestId, reason: result.error.reason },
+          { reason: result.error.reason },
           options.operation ? `${options.operation} failed` : 'request failed',
         );
         return errorResponse(result.error);
@@ -61,10 +69,7 @@ export function createHandler<TCtx extends HandlerBaseContext, TData, TError ext
         ? createdResponse(result.data, options)
         : okResponse(result.data, options);
     } catch (cause) {
-      context.logger.error(
-        { err: cause, requestId: context.requestId, operation: options.operation },
-        'unhandled error',
-      );
+      context.logger.error({ err: cause, operation: options.operation }, 'unhandled error');
       return errorResponse(INTERNAL_ERROR);
     }
   };

@@ -188,13 +188,18 @@ declare global {
   // 第四级：管理端 + 已校验该主体对本站点有权限
   type AdminSiteContext = ActorContext & { site: Site };
 }
-
-declare module '@tanstack/react-start' {
-  interface Register {
-    server: { requestContext: BaseContext };
-  }
-}
 ```
+
+> ⚠️ **不要做 `Register.server.requestContext` 模块增强**（阶段 0 实测结论）：
+> 框架实际读取的 `Register` 定义在 `@tanstack/router-core`，增强
+> `@tanstack/react-start` 只会新增一个同名接口，框架看不到；而且框架默认的 Node
+> 入口根本不传 request context（`createNullProtoObject(undefined)`），
+> 即便增强生效也只是类型谎言。
+>
+> **做法**：让中间件链成为 context 类型的唯一真源 —— `baseMiddleware` 用
+> `next({ context: { env, requestId, logger } })` 注入后，框架的中间件类型推导
+> 会自动把这三项带进下游 handler 的 `ctx.context`。附带收益是「路由漏挂
+> `baseMiddleware`」会直接编译失败，而不是运行期才炸。
 
 **规则**：函数签名里写它**真正需要的最低层级**。
 只需要读数据库的 Repo 函数收 `db`，不需要整个 `SiteContext`；只有确实要判断权限的才收 `AdminSiteContext`。

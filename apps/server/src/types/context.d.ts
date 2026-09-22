@@ -18,9 +18,18 @@
  *         siteScopeMiddleware  → AdminSiteContext site
  * ```
  *
- * ⚠️ `Register.server.requestContext` 的模块增强只描述**类型形状**：
- * 框架默认的 Node 入口不会传入任何值（`createNullProtoObject(undefined)`），
- * 真正的值由 `baseMiddleware` 注入。因此所有 API 路由都必须挂 baseMiddleware。
+ * ⚠️ **不做 `Register.server.requestContext` 模块增强。**
+ * 两条实测理由：
+ *
+ * 1. 框架消费的 `Register` 定义在 `@tanstack/router-core`（`createMiddleware.ts`
+ *    显式 import 该类型），增强 `@tanstack/react-start` 只会新增一个同名接口，
+ *    不会影响框架实际读取的那一个 —— 增强后 handler 的 context 依然缺 env。
+ * 2. 框架默认的 Node 入口不会传入 request context（`createNullProtoObject(undefined)`），
+ *    因此即便增强生效也只是**类型谎言**：`context.env` 在运行期是 undefined。
+ *
+ * 正确做法是让中间件链成为 context 类型的唯一真源：`baseMiddleware` 注入
+ * env / requestId / logger 后，类型由框架的中间件推导自动带上。附带好处是
+ * 「路由漏挂 baseMiddleware」会直接编译失败，而不是运行期才炸。
  */
 
 import type { Database, Site } from '@recado/db';
@@ -56,10 +65,4 @@ declare global {
 
   /** 第四级：管理端 + 已校验该主体对本站点有权限 */
   type AdminSiteContext = ActorContext & { site: Site };
-}
-
-declare module '@tanstack/react-start' {
-  interface Register {
-    server: { requestContext: BaseContext };
-  }
 }
