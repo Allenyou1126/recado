@@ -16,7 +16,7 @@
  *   rehype-emoji           `:name:` → `<img class="emoji">`（T2.4）
  *   rehype-external-links  站外链接补 rel（T2.5）
  *   rehype-mentions        提取 @提及（T2.6，同样只认非代码文本）
- *   rehype-sanitize        白名单消毒（**默认 schema，一条都不放宽**）
+ *   rehype-sanitize        白名单消毒
  *   [rehype-mathjax]       数学公式（T2.3，可信插件；必须排在 Shiki 之前，见下）
  *   [rehype-shiki]         代码高亮（T2.2，可信插件）
  *   rehype-stringify       hast → HTML
@@ -35,7 +35,7 @@
  */
 
 import { err, ok, type Result } from '@recado/shared';
-import rehypeShiki from '@shikijs/rehype';
+import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
 import { defaultSchema, type Schema } from 'hast-util-sanitize';
 import rehypeMathjax from 'rehype-mathjax/svg';
 import rehypeSanitize from 'rehype-sanitize';
@@ -44,10 +44,11 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
-import type { BuiltinLanguage } from 'shiki';
+import type { HighlighterCore } from 'shiki/core';
 import { unified } from 'unified';
 
 import { resolveEmojiMap, rehypeEmoji } from './emoji';
+import { CODE_THEME, getHighlighter, normalizeCodeLanguageNames } from './highlighter';
 import { rehypeExternalLinks } from './links';
 import { rehypeMentions } from './mentions';
 import { RenderErrors, type RenderError } from './rendering.errors';
@@ -58,24 +59,13 @@ import {
   type RenderedContent,
 } from './rendering.schema';
 
-/**
- * 代码高亮主题。
- *
- * 输出内联样式（`style="color:…"`），前端**无需**引入任何 CSS ——
- * 这是 Headless 交付形态下的正确取舍：站点不该为了看评论去装 Shiki 的样式表。
- */
-export const CODE_THEME = 'github-light';
-
-/** 语言包按需加载的初始集合：一个都不预加载（需求 Q-09：否则构建产物会明显膨胀） */
-const PRELOADED_LANGUAGES: BuiltinLanguage[] = [];
-
 /** shiki 用于「无高亮纯文本」的内置特殊语言 */
 const PLAIN_TEXT = 'text';
 
 /**
- * 消毒白名单：默认 schema + 一条与安全无关的必要补充。
+ * 消毒白名单：默认 schema + 两条与安全无关的必要补充。
  *
- * 补两条我们自己生成的属性，值都是固定字面量，调用方无从借此注入：
+ * 补的都是我们自己生成的属性，值都是固定字面量，调用方无从借此注入：
  *
  * - `img` 的 `className=emoji`：默认白名单不允许 img 带 className，
  *   不补就会被静默剥掉，前端无法给表情单独设样式
@@ -89,10 +79,14 @@ export const SANITIZE_SCHEMA: Schema = {
   attributes: {
     ...defaultSchema.attributes,
     img: [...(defaultSchema.attributes?.['img'] ?? []), ['className', 'emoji']],
-    // 外链的 rel 由上面的插件写入，默认白名单不含它
     a: [...(defaultSchema.attributes?.['a'] ?? []), 'rel'],
   },
 };
+
+/** 原文字节数（UTF-8），与 `comments.content_bytes` 同口径 */
+export function contentBytes(markdown: string): number {
+  return new TextEncoder().encode(markdown).length;
+}
 
 /** 超时哨兵值；用 Symbol 而不是 `null`，避免与正常结果混淆 */
 const TIMED_OUT = Symbol('render-timed-out');
@@ -124,19 +118,18 @@ export async function raceWithTimeout<TData>(
   }
 }
 
-/** 原文字节数（UTF-8），与 `comments.content_bytes` 同口径 */
-export function contentBytes(markdown: string): number {
-  return new TextEncoder().encode(markdown).length;
-}
-
 /**
  * 组装处理链。
  *
  * 每次调用新建一个 processor：unified 的 processor 冻结后不能再 `.use()`，
  * 而站点级配置（是否高亮、是否渲染公式）是按请求变化的。
- * 真正的重活（Shiki highlighter）由插件内部的单例缓存兜住，不受影响。
+ * 真正的重活（Shiki highlighter）是进程级单例，不受影响（见 highlighter.ts）。
  */
-export function buildProcessor(options: RenderOptions, mentions: string[] = []) {
+export function buildProcessor(
+  options: RenderOptions,
+  mentions: string[] = [],
+  highlighter?: HighlighterCore,
+) {
   const processor = unified().use(remarkParse);
 
   if (options.gfm) {
@@ -162,11 +155,14 @@ export function buildProcessor(options: RenderOptions, mentions: string[] = []) 
     processor.use(rehypeMathjax);
   }
 
-  if (options.codeHighlight) {
-    processor.use(rehypeShiki, {
-      // 语言包在遇到代码块时按需 import，未知语言按 fallbackLanguage 退化为纯文本
+  if (options.codeHighlight && highlighter !== undefined) {
+    // 别名（js / py / sh …）先改写为规范名，否则 Shiki 的懒加载分支不会被触发
+    processor.use(normalizeCodeLanguageNames);
+
+    processor.use(rehypeShikiFromHighlighter, highlighter, {
+      // 语言在遇到代码块时才按需 import（白名单见 highlighter.ts）；
+      // 未登记的语言按 fallbackLanguage 退化为纯文本，而不是报错
       lazy: true,
-      langs: PRELOADED_LANGUAGES,
       theme: CODE_THEME,
       defaultLanguage: PLAIN_TEXT,
       fallbackLanguage: PLAIN_TEXT,
@@ -177,6 +173,37 @@ export function buildProcessor(options: RenderOptions, mentions: string[] = []) 
   }
 
   return processor.use(rehypeStringify);
+}
+
+/**
+ * 从站点配置里读出渲染选项。
+ *
+ * ⚠️ 站点配置的完整 schema 在 T3.1 落地，这里先做**防御式读取**：
+ * 配置缺字段、类型不对时退回默认值，而不是让一条配置写错就把评论区打挂。
+ */
+export function renderOptionsFromSettings(settings: Record<string, unknown>): RenderOptionsInput {
+  const markdown = settings['markdown'];
+  const gfm =
+    typeof markdown === 'object' && markdown !== null
+      ? (markdown as { gfm?: unknown }).gfm
+      : undefined;
+
+  const emojis = settings['emojis'];
+
+  return {
+    gfm: typeof gfm === 'boolean' ? gfm : undefined,
+    codeHighlight:
+      typeof settings['codeHighlight'] === 'boolean' ? settings['codeHighlight'] : undefined,
+    math: typeof settings['math'] === 'boolean' ? settings['math'] : undefined,
+    linkNofollow:
+      typeof settings['linkNofollow'] === 'boolean' ? settings['linkNofollow'] : undefined,
+    emojis:
+      typeof emojis === 'object' && emojis !== null
+        ? (emojis as Record<string, string>)
+        : undefined,
+    maxContentBytes:
+      typeof settings['maxContentBytes'] === 'number' ? settings['maxContentBytes'] : undefined,
+  };
 }
 
 /**
@@ -203,8 +230,11 @@ export async function renderMarkdown(
   const mentions: string[] = [];
 
   try {
+    // highlighter 懒创建 + 进程级复用：只有第一次渲染代码块时付编译成本
+    const highlighter = resolved.codeHighlight ? await getHighlighter() : undefined;
+
     const file = await raceWithTimeout(
-      buildProcessor(resolved, mentions).process(markdown),
+      buildProcessor(resolved, mentions, highlighter).process(markdown),
       resolved.renderTimeoutMs,
     );
 

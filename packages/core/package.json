@@ -14,7 +14,9 @@
   "dependencies": {
     "@recado/db": "workspace:*",
     "@recado/shared": "workspace:*",
+    "@shikijs/langs": "4.4.3",
     "@shikijs/rehype": "4.4.3",
+    "@shikijs/themes": "4.4.3",
     "drizzle-orm": "0.45.3",
     "hast-util-sanitize": "5.0.2",
     "hast-util-to-string": "3.0.1",

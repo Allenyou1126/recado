@@ -52,6 +52,17 @@ export default defineConfig({
      */
     nitro({
       plugins: ['server/plugins/validate-env.ts'],
+
+      /**
+       * 关闭 wasm 导出条件。
+       *
+       * Nitro 默认给包解析加上 `wasm` / `unwasm` 条件，于是 `shiki/core` 会被解析到
+       * `core-unwasm.mjs`，进而把 oniguruma 的 `onig.wasm` 拉进服务端构建并失败
+       * （Rolldown 无法解析 emscripten 模块里的 `env` 导入）。
+       * 我们的高亮用 JavaScript 正则引擎（见 packages/core/.../highlighter.ts），
+       * 全程不需要任何 wasm，因此直接关掉这一条件。
+       */
+      wasm: false,
     }),
   ],
 });

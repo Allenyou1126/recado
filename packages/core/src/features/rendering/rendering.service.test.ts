@@ -263,3 +263,27 @@ describe('raceWithTimeout', () => {
     expect(typeof outcome).toBe('symbol');
   });
 });
+
+describe('代码高亮语言别名与白名单（T2.2）', () => {
+  it('别名 js 与规范名 javascript 都得到高亮', async () => {
+    const alias = await render('```js\nconst a = 1;\n```');
+    const canonical = await render('```javascript\nconst a = 1;\n```');
+
+    expect(alias.html).toContain('class="shiki');
+    expect(canonical.html).toContain('class="shiki');
+  });
+
+  it.each(['py', 'sh', 'ts', 'yml', 'sql', 'go', 'rust'])('别名 %s 能命中语言包', async (alias) => {
+    const { html } = await render(`\`\`\`${alias}\nlet x = 1\n\`\`\``);
+
+    expect(html).toContain('class="shiki');
+    expect(html).toContain('style="color:');
+  });
+
+  it('未登记的语言静默降级为纯文本，不报错', async () => {
+    const { html } = await render('```brainfuck\n+++\n```');
+
+    expect(html).toContain('+++');
+    expect(html).not.toContain('style="color:');
+  });
+});

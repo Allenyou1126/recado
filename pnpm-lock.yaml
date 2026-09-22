@@ -260,7 +260,13 @@ importers:
       '@recado/shared':
         specifier: workspace:*
         version: link:../shared
+      '@shikijs/langs':
+        specifier: 4.4.3
+        version: 4.4.3
       '@shikijs/rehype':
+        specifier: 4.4.3
+        version: 4.4.3
+      '@shikijs/themes':
         specifier: 4.4.3
         version: 4.4.3
       drizzle-orm:
