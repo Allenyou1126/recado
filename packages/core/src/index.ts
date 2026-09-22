@@ -26,6 +26,8 @@ export * from './features/rendering/mentions';
 export * from './features/rendering/rendering.errors';
 export * from './features/rendering/rendering.schema';
 export * from './features/rendering/rendering.service';
+export * from './features/members/members.service';
 export * from './features/sites/sites.errors';
 export * from './features/sites/sites.schema';
 export * from './features/sites/sites.service';
+export * from './features/threads/threads.service';
