@@ -12,6 +12,10 @@ import { err, ok, type AdminComment, type PublicComment, type Result } from '@re
 import { findEmailsByMemberIds } from '../members/members.data';
 import { resolveMember } from '../members/members.service';
 import { determineInitialStatus } from '../moderation/moderation.service';
+import {
+  enqueueCommentNotifications,
+  loadMemberEmail,
+} from '../notifications/notifications.service';
 import { renderMarkdown, renderOptionsFromSettings } from '../rendering/rendering.service';
 import { siteSettings } from '../sites/sites.service';
 import { countCommentAdded, ensureThread } from '../threads/threads.service';
@@ -36,7 +40,9 @@ import { CommentErrors, type CommentError } from './comments.errors';
 /** 发表评论需要的依赖：数据库 + 目标站点（不传整个 HTTP 上下文） */
 export type CommentContext = {
   db: DbExecutor;
-  site: Pick<Site, 'id' | 'settings'>;
+  site: Pick<Site, 'id' | 'name' | 'settings'>;
+  /** 站点对外基地址，用于拼邮件里的链接；省略时不带链接 */
+  publicBaseUrl?: string | undefined;
 };
 
 export type CreateCommentParams = {
@@ -84,7 +90,7 @@ export async function createComment(
 
   const status = determineInitialStatus(member, settings.auditMode);
 
-  return ctx.db.transaction(async (tx) => {
+  const created = await ctx.db.transaction(async (tx) => {
     const thread = await ensureThread(tx, ctx.site.id, params.path, {
       url: params.url ?? null,
       title: params.title ?? null,
@@ -123,8 +129,48 @@ export async function createComment(
       await countCommentAdded(tx, ctx.site.id, thread.id);
     }
 
-    return ok(toPublicComment(comment, { replyToNickname: placement.data.replyToNickname }));
+    return ok({
+      comment,
+      threadUrl: thread.url,
+      replyToMemberId: placement.data.replyToMemberId,
+      replyToNickname: placement.data.replyToNickname,
+    });
   });
+
+  if (created.error) return created;
+
+  // ⚠️ 通知入队在**事务提交之后**：事务内写队列会在回滚时留下幽灵任务，
+  // 而事务内做网络 IO 更是明令禁止。入队本身只是一条 INSERT，很快。
+  const replyToEmail =
+    created.data.replyToMemberId === null
+      ? null
+      : await loadMemberEmail(ctx.db, ctx.site.id, created.data.replyToMemberId);
+
+  // 作者邮箱用于「自己回复自己不发通知」的判定
+  const authorEmail = await loadMemberEmail(ctx.db, ctx.site.id, created.data.comment.memberId);
+
+  await enqueueCommentNotifications(
+    {
+      db: ctx.db,
+      site: ctx.site,
+      publicBaseUrl: ctx.publicBaseUrl ?? '',
+    },
+    {
+      commentId: created.data.comment.id,
+      path: created.data.comment.path,
+      threadUrl: created.data.threadUrl,
+      authorNickname: created.data.comment.authorNickname,
+      authorEmail,
+      contentHtml: created.data.comment.contentHtml,
+      status: created.data.comment.status === 'approved' ? 'approved' : 'pending',
+      replyToMemberId: created.data.replyToMemberId,
+      replyToEmail,
+    },
+  );
+
+  return ok(
+    toPublicComment(created.data.comment, { replyToNickname: created.data.replyToNickname }),
+  );
 }
 
 type Placement = {

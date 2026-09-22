@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as InternalOutboxDrainRouteImport } from './routes/internal/outbox-drain'
 import { Route as ApiV1ConfigRouteImport } from './routes/api/v1/config'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1/health'
 import { Route as ApiV1RenderRouteImport } from './routes/api/v1/render'
+import { Route as ApiV1UnsubscribeRouteImport } from './routes/api/v1/unsubscribe'
 import { Route as ApiV1AdminMeRouteImport } from './routes/api/v1/admin/me'
 import { Route as ApiV1CommentsIndexRouteImport } from './routes/api/v1/comments/index'
 import { Route as ApiV1CommentsCountRouteImport } from './routes/api/v1/comments/count'
@@ -46,6 +48,11 @@ const AuthLogoutRoute = AuthLogoutRouteImport.update({
   path: '/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InternalOutboxDrainRoute = InternalOutboxDrainRouteImport.update({
+  id: '/internal/outbox-drain',
+  path: '/internal/outbox-drain',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1ConfigRoute = ApiV1ConfigRouteImport.update({
   id: '/api/v1/config',
   path: '/api/v1/config',
@@ -59,6 +66,11 @@ const ApiV1HealthRoute = ApiV1HealthRouteImport.update({
 const ApiV1RenderRoute = ApiV1RenderRouteImport.update({
   id: '/api/v1/render',
   path: '/api/v1/render',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1UnsubscribeRoute = ApiV1UnsubscribeRouteImport.update({
+  id: '/api/v1/unsubscribe',
+  path: '/api/v1/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1AdminMeRoute = ApiV1AdminMeRouteImport.update({
@@ -112,9 +124,11 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/internal/outbox-drain': typeof InternalOutboxDrainRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/unsubscribe': typeof ApiV1UnsubscribeRoute
   '/api/v1/admin/me': typeof ApiV1AdminMeRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
@@ -130,9 +144,11 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/internal/outbox-drain': typeof InternalOutboxDrainRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/unsubscribe': typeof ApiV1UnsubscribeRoute
   '/api/v1/admin/me': typeof ApiV1AdminMeRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
@@ -149,9 +165,11 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/internal/outbox-drain': typeof InternalOutboxDrainRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/unsubscribe': typeof ApiV1UnsubscribeRoute
   '/api/v1/admin/me': typeof ApiV1AdminMeRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
@@ -169,9 +187,11 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
+    | '/internal/outbox-drain'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
+    | '/api/v1/unsubscribe'
     | '/api/v1/admin/me'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
@@ -187,9 +207,11 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
+    | '/internal/outbox-drain'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
+    | '/api/v1/unsubscribe'
     | '/api/v1/admin/me'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
@@ -205,9 +227,11 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
+    | '/internal/outbox-drain'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
+    | '/api/v1/unsubscribe'
     | '/api/v1/admin/me'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
@@ -224,9 +248,11 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
+  InternalOutboxDrainRoute: typeof InternalOutboxDrainRoute
   ApiV1ConfigRoute: typeof ApiV1ConfigRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
   ApiV1RenderRoute: typeof ApiV1RenderRoute
+  ApiV1UnsubscribeRoute: typeof ApiV1UnsubscribeRoute
   ApiV1AdminMeRoute: typeof ApiV1AdminMeRoute
   ApiV1CommentsCountRoute: typeof ApiV1CommentsCountRoute
   ApiV1CommentsRecentRoute: typeof ApiV1CommentsRecentRoute
@@ -268,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/internal/outbox-drain': {
+      id: '/internal/outbox-drain'
+      path: '/internal/outbox-drain'
+      fullPath: '/internal/outbox-drain'
+      preLoaderRoute: typeof InternalOutboxDrainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/config': {
       id: '/api/v1/config'
       path: '/api/v1/config'
@@ -287,6 +320,13 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/render'
       fullPath: '/api/v1/render'
       preLoaderRoute: typeof ApiV1RenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/unsubscribe': {
+      id: '/api/v1/unsubscribe'
+      path: '/api/v1/unsubscribe'
+      fullPath: '/api/v1/unsubscribe'
+      preLoaderRoute: typeof ApiV1UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/admin/me': {
@@ -360,9 +400,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
+  InternalOutboxDrainRoute: InternalOutboxDrainRoute,
   ApiV1ConfigRoute: ApiV1ConfigRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
   ApiV1RenderRoute: ApiV1RenderRoute,
+  ApiV1UnsubscribeRoute: ApiV1UnsubscribeRoute,
   ApiV1AdminMeRoute: ApiV1AdminMeRoute,
   ApiV1CommentsCountRoute: ApiV1CommentsCountRoute,
   ApiV1CommentsRecentRoute: ApiV1CommentsRecentRoute,

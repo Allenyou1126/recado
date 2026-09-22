@@ -20,6 +20,9 @@
  *   notifications / rendering / auth / audit
  */
 
+export * from './features/notifications/notifications.crypto';
+export * from './features/notifications/notifications.service';
+export * from './features/notifications/notifications.templates';
 export * from './features/rendering/emoji';
 export * from './features/rendering/links';
 export * from './features/rendering/mentions';

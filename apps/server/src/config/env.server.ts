@@ -100,6 +100,18 @@ export const EnvSchema = z.object({
     .min(1)
     .max(24 * 30)
     .default(168),
+
+  /**
+   * 站点对外基地址，用于拼邮件里的链接（评论链接、退订链接）。
+   * 省略时退回 `OIDC_REDIRECT_URI` 的 origin —— 那通常就是部署地址。
+   */
+  PUBLIC_BASE_URL: z.url().optional(),
+
+  /**
+   * 外部 cron / sidecar 触发 `POST /internal/outbox/drain` 的共享密钥。
+   * 不设置时该端点不可用（一直返回未认证）。
+   */
+  INTERNAL_DRAIN_TOKEN: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
