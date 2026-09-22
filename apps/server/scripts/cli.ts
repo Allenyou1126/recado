@@ -18,11 +18,12 @@
 
 import { parseArgs } from 'node:util';
 
-import { createSite } from '@recado/core';
+import { createSite, resolveAccessScope } from '@recado/core';
 import { createDbClient, type DbClient } from '@recado/db';
 import { isErr } from '@recado/shared';
 
 import { EnvValidationError, getEnv, loadLocalEnvFile } from '../src/config/env.server';
+import { verifyBearerToken } from '../src/lib/oidc.server';
 
 type Command = {
   summary: string;
@@ -44,9 +45,6 @@ function stringOption(value: unknown): string | undefined {
 
 /** 打开数据库连接并保证一定会关闭 */
 async function withDb<TResult>(fn: (db: DbClient) => Promise<TResult>): Promise<TResult> {
-  // 本地开发从仓库根 .env 兜底；编排环境直接注入环境变量
-  loadLocalEnvFile();
-
   const client = createDbClient(getEnv().DATABASE_URL);
 
   try {
@@ -56,7 +54,101 @@ async function withDb<TResult>(fn: (db: DbClient) => Promise<TResult>): Promise<
   }
 }
 
+/**
+ * 诊断登录：打印本次凭证解析到的角色与可见站点。
+ *
+ * 存在的理由是 Q-17 的代价 —— 无匹配角色会被直接拒绝登录，
+ * 而首次部署最常见的故障就是「IdP 侧角色没配好」。这个命令让排查有据可依：
+ * 到底拿到了哪些角色、前缀对不对、站点 UUID 写没写错。
+ *
+ * 两种用法：
+ *   auth:diagnose --token <access token>   # 走完整验签，最接近真实调用
+ *   auth:diagnose --roles a,b              # 只做映射，便于在没有 token 时核对前缀
+ */
+const diagnoseCommand: Command = {
+  summary: '诊断 OIDC 角色与可见站点（排查「首次部署锁死」）',
+  usage:
+    'auth:diagnose (--token <access token> | --roles <角色1,角色2>) [--json]\n' +
+    '  --token  直接给一个 access token，走完整验签与角色解析\n' +
+    '  --roles  只给角色名列表，跳过验签（用于核对前缀与站点 UUID）',
+  async run(_positionals, options) {
+    const env = getEnv();
+    const prefix = env.OIDC_ROLE_PREFIX;
+
+    const token = stringOption(options.token);
+    const rolesOption = stringOption(options.roles);
+
+    if (token === undefined && rolesOption === undefined) {
+      process.stderr.write('需要 --token 或 --roles 之一\n\n');
+      return 1;
+    }
+
+    let roles: string[] = [];
+    let subject = '(未验签)';
+
+    if (token !== undefined) {
+      const verified = await verifyBearerToken(env, token);
+
+      if (verified.error) {
+        process.stderr.write(
+          `token 校验失败：${verified.error.reason}。请确认 issuer / 受众 / 密钥配置。\n`,
+        );
+        return 1;
+      }
+
+      roles = verified.data.roles;
+      subject = verified.data.identity.oidcSubject;
+    } else if (rolesOption !== undefined) {
+      roles = rolesOption
+        .split(',')
+        .map((role) => role.trim())
+        .filter((role) => role.length > 0);
+    }
+
+    const { matchedRoles, scope } = resolveAccessScope(roles, prefix);
+    const siteIds = scope?.type === 'site' ? scope.siteIds : [];
+
+    if (options.json === true) {
+      process.stdout.write(
+        `${JSON.stringify({ subject, rolePrefix: prefix, roles, matchedRoles, scope }, null, 2)}\n`,
+      );
+      return scope === null ? 2 : 0;
+    }
+
+    const lines = [
+      `issuer:        ${env.OIDC_ISSUER_URL}`,
+      `claim 路径:    ${env.OIDC_ROLE_CLAIM}`,
+      `角色前缀:      ${prefix}`,
+      `主体:          ${subject}`,
+      `拿到的角色:    ${roles.length > 0 ? roles.join(', ') : '（空）'}`,
+      `命中的角色:    ${matchedRoles.length > 0 ? matchedRoles.join(', ') : '（无）'}`,
+      '',
+    ];
+
+    if (scope === null) {
+      lines.push(
+        `✗ 没有任何角色匹配前缀 \`${prefix}\`，该主体会被**拒绝登录且不产生会话**。`,
+        '',
+        '排查顺序：',
+        `  1. IdP 里是否存在名为 ${prefix}.OWNER 或 ${prefix}.ADMIN.<站点 UUID> 的角色`,
+        `  2. claim 路径是否为 ${env.OIDC_ROLE_CLAIM}（Keycloak 常见写法是 realm_access.roles）`,
+        '  3. 站点管理员角色的站点段必须是 UUID，不是站点名或 slug',
+      );
+    } else if (scope.type === 'instance') {
+      lines.push('✓ 实例级管理员：可以管理全部站点。');
+    } else {
+      lines.push(`✓ 站点级管理员：仅能看到以下 ${siteIds.length} 个站点：`);
+      for (const siteId of siteIds) lines.push(`    ${siteId}`);
+    }
+
+    process.stdout.write(`${lines.join('\n')}\n`);
+
+    return scope === null ? 2 : 0;
+  },
+};
+
 const commands: Record<string, Command> = {
+  'auth:diagnose': diagnoseCommand,
   'site:create': {
     summary: '创建站点并签发 site key（管理台就绪前的 bootstrap 手段）',
     usage:
@@ -121,6 +213,9 @@ function printHelp(): void {
 }
 
 async function main(argv: string[]): Promise<number> {
+  // 本地开发从仓库根 .env 兜底；编排环境直接注入环境变量（见 loadLocalEnvFile 的说明）
+  loadLocalEnvFile();
+
   const [commandName, ...rest] = argv;
 
   if (commandName === undefined || commandName === '--help' || commandName === '-h') {
@@ -140,6 +235,8 @@ async function main(argv: string[]): Promise<number> {
     options: {
       name: { type: 'string' },
       origin: { type: 'string', multiple: true },
+      token: { type: 'string' },
+      roles: { type: 'string' },
       json: { type: 'boolean' },
     },
     allowPositionals: true,

@@ -11,7 +11,7 @@ import { randomInt } from 'node:crypto';
 import type { DbExecutor, Site } from '@recado/db';
 import { err, ok, type PublicSiteConfig, type Result } from '@recado/shared';
 
-import { findSiteByKey, insertSite, updateSiteKey } from './sites.data';
+import { findSiteById, findSiteByKey, insertSite, updateSiteKey } from './sites.data';
 import { SiteErrors, type SiteError } from './sites.errors';
 import {
   AllowedOriginSchema,
@@ -23,6 +23,16 @@ import {
 
 /** 来源校验结果；`raw` 是命中的来源（也可能是 null，表示无来源头） */
 export type OriginCheck = { allowed: boolean; raw: string | null };
+
+/**
+ * 按 id 取站点。
+ *
+ * 管理端用：先由 siteScope 校验权限，再确认站点存在 ——
+ * 顺序不能反，否则无权限的主体可以靠错误码探测站点是否存在。
+ */
+export async function getSiteById(db: DbExecutor, siteId: string) {
+  return findSiteById(db, siteId);
+}
 
 /** 读取站点配置（已按 schema 归一化，字段缺失或写错都退回默认值） */
 export function siteSettings(site: Pick<Site, 'settings'>): SiteSettings {

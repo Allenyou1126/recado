@@ -81,6 +81,25 @@ export const EnvSchema = z.object({
    * 兼容 `groups` 与 Keycloak 的嵌套结构（如 `realm_access.roles`）。
    */
   OIDC_ROLE_CLAIM: z.string().min(1).default('roles'),
+
+  /**
+   * Bearer token 的受众（`aud`）校验值，默认取 `OIDC_CLIENT_ID`。
+   * Q-07 明确要求做受众校验 —— 否则同一 IdP 下**别的客户端**签发的 token 也能调我们的管理 API。
+   */
+  OIDC_AUDIENCE: z.string().min(1).optional(),
+
+  /**
+   * 管理台会话有效期（小时），默认 7 天。
+   *
+   * 权限快照存在会话里，因此这个值同时决定「IdP 侧撤销角色后最晚多久生效」；
+   * 对安全要求高的部署可以调小（代价是更频繁地重新登录）。
+   */
+  SESSION_TTL_HOURS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .default(168),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

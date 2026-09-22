@@ -11,7 +11,7 @@
  *   token 的**哈希**而不是 token 本身 —— 库被读走也不能直接冒用会话
  */
 
-import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { inet } from './types';
 
@@ -55,6 +55,17 @@ export const sessions = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     /** 非空表示已被主动吊销（登出、强制下线） */
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
+
+    /**
+     * 登录时解析到的角色快照。
+     *
+     * 需求 §3.2 要求「会话内缓存权限快照」：每次请求都回查 IdP 会把认证变成
+     * 网络瓶颈，而本系统不存角色授予关系、无法从库里现算。撤销语义因此是
+     * 「吊销会话后立即失效，或等会话到期」—— 强制下线走 revokeAllSessionsForAdmin。
+     *
+     * ⚠️ 只存**命中的角色名**，不存原始 claims（claims 里可能有邮箱等个人信息）。
+     */
+    roles: jsonb('roles').$type<string[]>().notNull().default([]),
 
     ip: inet('ip'),
     userAgent: text('user_agent'),

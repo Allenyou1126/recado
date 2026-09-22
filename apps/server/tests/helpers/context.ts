@@ -31,6 +31,7 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     OIDC_REDIRECT_URI: 'http://localhost:3000/auth/callback',
     OIDC_ROLE_PREFIX: 'recado',
     OIDC_ROLE_CLAIM: 'roles',
+    SESSION_TTL_HOURS: 168,
     ...overrides,
   };
 }

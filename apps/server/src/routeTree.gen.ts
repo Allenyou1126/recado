@@ -10,6 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as ApiV1ConfigRouteImport } from './routes/api/v1/config'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1/health'
 import { Route as ApiV1RenderRouteImport } from './routes/api/v1/render'
@@ -22,6 +25,21 @@ import { Route as ApiV1CommentsIdRepliesRouteImport } from './routes/api/v1/comm
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1ConfigRoute = ApiV1ConfigRouteImport.update({
@@ -67,6 +85,9 @@ const ApiV1CommentsIdRepliesRoute = ApiV1CommentsIdRepliesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
@@ -78,6 +99,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
@@ -90,6 +114,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
@@ -103,6 +130,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
@@ -114,6 +144,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
@@ -125,6 +158,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
@@ -137,6 +173,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthLogoutRoute: typeof AuthLogoutRoute
   ApiV1ConfigRoute: typeof ApiV1ConfigRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
   ApiV1RenderRoute: typeof ApiV1RenderRoute
@@ -154,6 +193,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/config': {
@@ -217,6 +277,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthLogoutRoute: AuthLogoutRoute,
   ApiV1ConfigRoute: ApiV1ConfigRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
   ApiV1RenderRoute: ApiV1RenderRoute,
