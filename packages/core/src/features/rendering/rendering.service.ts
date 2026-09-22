@@ -13,6 +13,7 @@
  *   remark-math            `$…$` / `$$…$$` → math 节点
  *   remark-rehype          mdast → hast（allowDangerousHtml 默认关闭：原文里的
  *                          原始 HTML 根本不会进入 AST，这是第一道闸门）
+ *   rehype-emoji           `:name:` → `<img class="emoji">`（T2.4）
  *   rehype-sanitize        白名单消毒（**默认 schema，一条都不放宽**）
  *   [rehype-mathjax]       数学公式（T2.3，可信插件；必须排在 Shiki 之前，见下）
  *   [rehype-shiki]         代码高亮（T2.2，可信插件）
@@ -33,6 +34,7 @@
 
 import { err, ok, type Result } from '@recado/shared';
 import rehypeShiki from '@shikijs/rehype';
+import { defaultSchema, type Schema } from 'hast-util-sanitize';
 import rehypeMathjax from 'rehype-mathjax/svg';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
@@ -43,6 +45,7 @@ import remarkRehype from 'remark-rehype';
 import type { BuiltinLanguage } from 'shiki';
 import { unified } from 'unified';
 
+import { resolveEmojiMap, rehypeEmoji } from './emoji';
 import { RenderErrors, type RenderError } from './rendering.errors';
 import {
   RenderOptionsSchema,
@@ -64,6 +67,22 @@ const PRELOADED_LANGUAGES: BuiltinLanguage[] = [];
 
 /** shiki 用于「无高亮纯文本」的内置特殊语言 */
 const PLAIN_TEXT = 'text';
+
+/**
+ * 消毒白名单：默认 schema + 一条与安全无关的必要补充。
+ *
+ * 表情图片是我们自己生成的 `<img class="emoji">`，而 GitHub 的默认白名单不允许
+ * `img` 带 className —— 不补这一条，`class="emoji"` 会被静默剥掉，前端就没法
+ * 给表情单独设样式。除此之外不放宽任何规则：类名是固定字面量，
+ * `src` 仍受默认的协议白名单（http/https）与相对路径规则约束。
+ */
+export const SANITIZE_SCHEMA: Schema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    img: [...(defaultSchema.attributes?.['img'] ?? []), ['className', 'emoji']],
+  },
+};
 
 /** 原文字节数（UTF-8），与 `comments.content_bytes` 同口径 */
 export function contentBytes(markdown: string): number {
@@ -89,7 +108,8 @@ export function buildProcessor(options: RenderOptions) {
   }
 
   processor.use(remarkRehype);
-  processor.use(rehypeSanitize);
+  processor.use(rehypeEmoji, resolveEmojiMap(options.emojis));
+  processor.use(rehypeSanitize, SANITIZE_SCHEMA);
 
   if (options.math) {
     // SVG 输出是自包含的：不依赖 MathJax 的 CSS 或字体，适合 Headless 交付

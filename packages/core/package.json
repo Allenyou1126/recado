@@ -16,6 +16,7 @@
     "@recado/shared": "workspace:*",
     "@shikijs/rehype": "4.4.3",
     "drizzle-orm": "0.45.3",
+    "hast-util-sanitize": "5.0.2",
     "hast-util-to-string": "3.0.1",
     "rehype-mathjax": "7.1.0",
     "rehype-sanitize": "6.0.0",
@@ -30,6 +31,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@types/hast": "3.0.5",
     "vitest": "5.0.1"
   }
 }

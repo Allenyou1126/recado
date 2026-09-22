@@ -141,3 +141,48 @@ describe('数学公式（T2.3）', () => {
     expect(result.data?.html).toContain('$E = mc^2$');
   });
 });
+
+describe('表情短代码（T2.4）', () => {
+  it('内置表情渲染成 img.emoji', async () => {
+    const { html } = await render('你好 :smile: 世界');
+
+    expect(html).toContain('<img class="emoji"');
+    expect(html).toContain('alt=":smile:"');
+    expect(html).toContain('twemoji');
+  });
+
+  it('站点自定义表情覆盖同名内置项，并可追加新名字', async () => {
+    const result = await renderMarkdown(':smile: :party_parrot:', {
+      emojis: {
+        smile: 'https://cdn.example.com/smile.png',
+        party_parrot: '/emoji/parrot.gif',
+      },
+    });
+
+    expect(result.data?.html).toContain('src="https://cdn.example.com/smile.png"');
+    expect(result.data?.html).toContain('src="/emoji/parrot.gif"');
+  });
+
+  it('未知短代码原样保留，不会被吞掉', async () => {
+    const { html } = await render('这个 :not_an_emoji: 应保持原样');
+
+    expect(html).toContain(':not_an_emoji:');
+    expect(html).not.toContain('<img');
+  });
+
+  it('代码块与行内代码里的短代码不会被替换', async () => {
+    const { html } = await render('` :smile: `\n\n```text\n:smile:\n```');
+
+    expect(html).not.toContain('<img');
+    expect(html).toContain(':smile:');
+  });
+
+  it('危险协议的表情地址被丢弃，不给 XSS 留口子', async () => {
+    const result = await renderMarkdown(':evil:', {
+      emojis: { evil: 'javascript:alert(1)' },
+    });
+
+    expect(result.data?.html).not.toContain('<img');
+    expect(result.data?.html).toContain(':evil:');
+  });
+});

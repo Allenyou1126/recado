@@ -266,6 +266,9 @@ importers:
       drizzle-orm:
         specifier: 0.45.3
         version: 0.45.3(@types/pg@8.23.1)(pg@8.23.0)
+      hast-util-sanitize:
+        specifier: 5.0.2
+        version: 5.0.2
       hast-util-to-string:
         specifier: 3.0.1
         version: 3.0.1
@@ -303,6 +306,9 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
+      '@types/hast':
+        specifier: 3.0.5
+        version: 3.0.5
       vitest:
         specifier: 5.0.1
         version: 5.0.1(@types/node@26.6.2)(vite@8.3.0(@types/node@26.6.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
