@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteRouteImport } from './routes/_authed/route'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
 import { Route as ReadyzRouteImport } from './routes/readyz'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -53,6 +55,16 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthedRouteRoute = AuthedRouteRouteImport.update({
   id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
+  id: '/openapi.json',
+  path: '/openapi.json',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReadyzRoute = ReadyzRouteImport.update({
@@ -230,6 +242,8 @@ const ApiV1AdminSitesIdRotateKeyRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRoute
+  '/openapi.json': typeof OpenapiDotjsonRoute
   '/readyz': typeof ReadyzRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
@@ -267,6 +281,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRoute
+  '/openapi.json': typeof OpenapiDotjsonRoute
   '/readyz': typeof ReadyzRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
@@ -306,6 +322,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteRouteWithChildren
+  '/docs': typeof DocsRoute
+  '/openapi.json': typeof OpenapiDotjsonRoute
   '/readyz': typeof ReadyzRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
@@ -345,6 +363,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/docs'
+    | '/openapi.json'
     | '/readyz'
     | '/auth/callback'
     | '/auth/login'
@@ -382,6 +402,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/docs'
+    | '/openapi.json'
     | '/readyz'
     | '/auth/callback'
     | '/auth/login'
@@ -420,6 +442,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/docs'
+    | '/openapi.json'
     | '/readyz'
     | '/auth/callback'
     | '/auth/login'
@@ -459,6 +483,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRouteRoute: typeof AuthedRouteRouteWithChildren
+  DocsRoute: typeof DocsRoute
+  OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   ReadyzRoute: typeof ReadyzRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -500,6 +526,20 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/openapi.json': {
+      id: '/openapi.json'
+      path: '/openapi.json'
+      fullPath: '/openapi.json'
+      preLoaderRoute: typeof OpenapiDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/readyz': {
@@ -792,6 +832,8 @@ const ApiV1AdminSitesIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRouteRoute: AuthedRouteRouteWithChildren,
+  DocsRoute: DocsRoute,
+  OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   ReadyzRoute: ReadyzRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,

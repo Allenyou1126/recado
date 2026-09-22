@@ -771,3 +771,72 @@ describe('探针（T9.6）', () => {
     expect(response.headers.get('allow')).toBe('GET, HEAD, OPTIONS');
   });
 });
+
+describe('OpenAPI 文档（T9.1）', () => {
+  it('文档可访问且是 OpenAPI 3.1', async () => {
+    const response = await fetch(url('/openapi.json'));
+    const document = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(document.openapi).toBe('3.1.0');
+    expect(document.info.title).toBe('Recado API');
+  });
+
+  it('文档里的路径与**实际存在**的路由逐项一致', async () => {
+    const document = await fetch(url('/openapi.json')).then(
+      (response) => response.json() as Promise<{ paths: Record<string, unknown> }>,
+    );
+
+    const documented = Object.keys(document.paths).sort();
+
+    // 这份清单就是「实现里真实存在的路由」，新增路由却忘了写文档时这里会红
+    const implemented = [
+      '/api/v1/admin/comments',
+      '/api/v1/admin/comments/batch',
+      '/api/v1/admin/comments/{id}',
+      '/api/v1/admin/labels',
+      '/api/v1/admin/me',
+      '/api/v1/admin/members/{id}',
+      '/api/v1/admin/sites',
+      '/api/v1/admin/sites/{id}',
+      '/api/v1/admin/sites/{id}/rotate-key',
+      '/api/v1/admin/test-email',
+      '/api/v1/comments',
+      '/api/v1/comments/count',
+      '/api/v1/comments/recent',
+      '/api/v1/comments/{id}/replies',
+      '/api/v1/config',
+      '/api/v1/health',
+      '/api/v1/render',
+      '/api/v1/threads/{path}',
+      '/api/v1/unsubscribe',
+      '/internal/outbox/drain',
+      '/readyz',
+    ].sort();
+
+    expect(documented).toEqual(implemented);
+  });
+
+  it('组件里带上了公开与管理端点要用的参数与安全方案', async () => {
+    const document = await fetch(url('/openapi.json')).then(
+      (response) => response.json() as Promise<{ components: Record<string, unknown> }>,
+    );
+
+    const components = document.components as {
+      parameters: Record<string, unknown>;
+      securitySchemes: Record<string, unknown>;
+      schemas: Record<string, unknown>;
+    };
+
+    expect(Object.keys(components.parameters)).toEqual(
+      expect.arrayContaining(['SiteKey', 'SiteId', 'Origin', 'CsrfToken']),
+    );
+    expect(Object.keys(components.securitySchemes)).toEqual(
+      expect.arrayContaining(['session', 'bearer']),
+    );
+    // 契约类型确实来自 Zod 推导
+    expect(Object.keys(components.schemas)).toEqual(
+      expect.arrayContaining(['CreateCommentInput', 'PublicComment', 'PublicSiteConfig', 'Error']),
+    );
+  });
+});
