@@ -83,7 +83,8 @@
 
 ## 提交规范（强制）
 
-> ⚠️ **本节由 `.githooks/commit-msg` 钩子强制校验，不合规的提交会被直接拒绝。**
+> ⚠️ **语义化格式、scope 白名单、标题长度由 `.githooks/commit-msg` 强制校验，不合规会被直接拒绝。**
+> **Assisted-By 尾注缺失不拦截**，只在你填写时校验格式。
 > 钩子通过 `core.hooksPath=.githooks` 启用。新克隆的仓库若钩子未生效，执行：
 > `git config core.hooksPath .githooks`
 >
@@ -117,9 +118,12 @@ ci        deps      docs     specs    hooks    repo
 **标题 ≤ 100 字符**，细节写正文。破坏性变更在 type 后加 `!`（如 `refactor!:`），
 并在正文用 `BREAKING CHANGE:` 说明。
 
-### 2. Assisted-By 尾注（强制）
+### 2. Assisted-By 尾注（Agent 必须添加，钩子不拦截缺失）
 
 **凡有 AI Agent 参与的提交——哪怕只参与了一部分——都必须注明所用工具与模型。**
+
+> ⚠️ 这是对 Agent 的**约定要求**，不是钩子的拦截项：
+> **漏写不会被拒绝，写错格式会被拒绝。** 所以别指望钩子提醒你补上。
 
 格式为 `<工具名> (<模型 ID>)`，写在正文之后、**空一行**：
 
@@ -129,12 +133,12 @@ Assisted-By: DeepSeek Harness (deepseek-flash)
 
 | 要求 | 说明 |
 | --- | --- |
-| **工具名与模型缺一不可** | `Assisted-By: DeepSeek Harness` 会被钩子拒绝 |
+| **工具名与模型缺一不可** | 只写 `Assisted-By: DeepSeek Harness` 会被钩子拒绝 |
 | **多个 Agent 写多行** | 主 Agent + 子 Agent 协作时逐行列出 |
-| **纯人类提交写 `none`** | `Assisted-By: none`，明确表示无 Agent 参与 |
-| **尾注前必须空一行** | 否则 git 不将其识别为尾注块（钩子有兜底，但请按规范写） |
+| **不需要时可以省略** | 纯人类提交可不写；也可显式写 `Assisted-By: none` |
+| **尾注前必须空一行** | 否则 git 不将其识别为尾注块（钩子有行扫描兜底，但请按规范写） |
 
-提交时使用 `-m` 多次或 heredoc 保证空行，例如：
+提交时用多个 `-m` 确保空行，例如：
 
 ```bash
 git commit -m "feat(comments): 支持多级回复分页" \

@@ -709,7 +709,8 @@ function CommentsPage() {
 
 > 规则实现于 `.githooks/commit-msg`，经 `core.hooksPath=.githooks` 启用。
 > 新克隆仓库后若钩子未生效，执行 `git config core.hooksPath .githooks`。
-> 不合规的提交会被**直接拒绝**，不是靠自觉。
+> **语义化格式、scope 白名单、标题长度**不合规会被直接拒绝，不是靠自觉；
+> **Assisted-By 尾注缺失不拦截**，仅在填写时校验格式。
 
 **格式**：
 
@@ -728,15 +729,18 @@ Assisted-By: <工具名> (<模型 ID>)
 | 标题长度 | ≤ 100 字符，细节移到正文 |
 | 破坏性变更 | type 后加 `!`（如 `refactor!: ...`），正文用 `BREAKING CHANGE:` 说明 |
 
-**Assisted-By 尾注是强制项。** 凡有 AI Agent 参与的提交（哪怕只参与一部分），
-必须注明所用工具与模型，**两者缺一不可**：
+**Assisted-By 尾注：Agent 必须添加，钩子只校验格式。**
+凡有 AI Agent 参与的提交（哪怕只参与一部分），必须注明所用工具与模型，
+**两者缺一不可**：
 
 ```
 Assisted-By: DeepSeek Harness (deepseek-flash)
 ```
 
+- **钩子不拦截缺失**——漏写不会被拒绝，因此别指望钩子提醒你补上。
+- 写错格式会被拒绝（如只写工具名不写模型）。
 - 多个 Agent 协作时写多行。
-- 完全由人类完成、无任何 Agent 参与的提交写 `Assisted-By: none`。
+- 纯人类提交可省略；也可显式写 `Assisted-By: none`。
 - 尾注与正文之间**必须空一行**，否则 git 不将其识别为尾注块
   （钩子有行扫描兜底，但请按规范写）。
 
