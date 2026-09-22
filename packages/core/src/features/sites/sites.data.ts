@@ -7,21 +7,21 @@
  * `findSiteByKey` 是唯一例外 —— 它正是**用来解析出** siteId 的那一步。
  */
 
-import { sites, type Database, type NewSite, type Site } from '@recado/db';
+import { sites, type DbExecutor, type NewSite, type Site } from '@recado/db';
 import { eq } from 'drizzle-orm';
 
 /** 按公开 site key 查找站点（site key 是公开标识，不是密钥） */
-export async function findSiteByKey(db: Database, key: string): Promise<Site | undefined> {
+export async function findSiteByKey(db: DbExecutor, key: string): Promise<Site | undefined> {
   return db.query.sites.findFirst({ where: eq(sites.key, key) });
 }
 
 /** 按站点 id 查找 */
-export async function findSiteById(db: Database, siteId: string): Promise<Site | undefined> {
+export async function findSiteById(db: DbExecutor, siteId: string): Promise<Site | undefined> {
   return db.query.sites.findFirst({ where: eq(sites.id, siteId) });
 }
 
 /** 插入站点 */
-export async function insertSite(db: Database, values: NewSite): Promise<Site> {
+export async function insertSite(db: DbExecutor, values: NewSite): Promise<Site> {
   const [row] = await db.insert(sites).values(values).returning();
 
   if (!row) throw new Error('insertSite 未返回插入的行');
@@ -30,7 +30,7 @@ export async function insertSite(db: Database, values: NewSite): Promise<Site> {
 
 /** 轮换 site key（旧 key 立即失效） */
 export async function updateSiteKey(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   key: string,
 ): Promise<Site | undefined> {
@@ -45,7 +45,7 @@ export async function updateSiteKey(
 
 /** 更新站点可写字段（不含 key：key 有单独的轮换入口） */
 export async function updateSite(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   patch: Partial<Pick<Site, 'name' | 'status' | 'allowedOrigins' | 'settings'>>,
 ): Promise<Site | undefined> {

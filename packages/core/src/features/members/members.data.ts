@@ -4,12 +4,12 @@
  * **参数约定**：`siteId` 紧跟 `db`（见 .specs/development-standards.md §7.2）。
  */
 
-import { members, type Database, type Member } from '@recado/db';
+import { members, type DbExecutor, type Member } from '@recado/db';
 import { and, eq, sql } from 'drizzle-orm';
 
 /** 按邮箱查成员；`email` 是 citext，大小写不敏感 */
 export async function findMemberByEmail(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   email: string,
 ): Promise<Member | undefined> {
@@ -33,7 +33,7 @@ export type MemberProfile = {
  * `nickname` / `website` 取**最近一次**使用的值（M3 邮箱归并）。
  */
 export async function upsertMember(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   profile: MemberProfile,
 ): Promise<Member> {
@@ -64,7 +64,7 @@ export async function upsertMember(
 
 /** 站点内已发布评论数 ±1（发表 / 删除 / 恢复时维护） */
 export async function addMemberCommentCount(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   memberId: string,
   delta: number,

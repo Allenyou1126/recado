@@ -6,7 +6,7 @@
  * 在同一个事务里**，否则一旦不一致就再也没有自愈机会。
  */
 
-import type { Database, Thread } from '@recado/db';
+import type { DbExecutor, Thread } from '@recado/db';
 import type { Result } from '@recado/shared';
 import { ok } from '@recado/shared';
 
@@ -15,7 +15,7 @@ import { addThreadCommentCount, findThreadByPath, upsertThread } from './threads
 
 /** 找到或创建线程；同一站点同一 path 只有一条 */
 export async function ensureThread(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   path: string,
   meta: { url?: string | null; title?: string | null } = {},
@@ -25,7 +25,7 @@ export async function ensureThread(
 
 /** 已发布评论 +1 */
 export async function countCommentAdded(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   threadId: string,
 ): Promise<void> {
@@ -34,7 +34,7 @@ export async function countCommentAdded(
 
 /** 已发布评论 -1（删除 / 标记垃圾 / 转为待审） */
 export async function countCommentRemoved(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   threadId: string,
 ): Promise<void> {
@@ -43,7 +43,7 @@ export async function countCommentRemoved(
 
 /** 线程元信息；线程不存在时返回零值而不是 404 —— 没人评论过的文章是正常状态 */
 export async function getThreadMeta(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   path: string,
 ): Promise<Result<ThreadMeta, SiteError>> {

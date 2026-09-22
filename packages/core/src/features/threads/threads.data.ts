@@ -4,7 +4,7 @@
  * **参数约定**：`siteId` 紧跟 `db`（.specs/development-standards.md §7.2）。
  */
 
-import { threads, type Database, type Thread } from '@recado/db';
+import { threads, type DbExecutor, type Thread } from '@recado/db';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 /**
@@ -14,7 +14,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
  * 后者会撞唯一约束。
  */
 export async function upsertThread(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   path: string,
   meta: { url?: string | null; title?: string | null } = {},
@@ -37,7 +37,7 @@ export async function upsertThread(
 }
 
 export async function findThreadByPath(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   path: string,
 ): Promise<Thread | undefined> {
@@ -48,7 +48,7 @@ export async function findThreadByPath(
 
 /** 批量取线程（批量评论数走它，O(1) 读物化计数） */
 export async function findThreadsByPaths(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   paths: readonly string[],
 ): Promise<Thread[]> {
@@ -67,7 +67,7 @@ export async function findThreadsByPaths(
  * `last_comment_at` 只在新增时推进 —— 删除不该把「最近评论时间」往回拨。
  */
 export async function addThreadCommentCount(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   threadId: string,
   delta: number,

@@ -18,6 +18,17 @@ import * as schema from './schema/index';
 
 export type Database = ReturnType<typeof buildDrizzle>;
 
+/** 事务句柄：`db.transaction(async (tx) => …)` 里的 `tx` */
+export type DbTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/**
+ * 「能执行查询的东西」：连接池或事务。
+ *
+ * Repo 函数收它而不是 `Database`，这样同一个函数既能被服务层在事务内复用，
+ * 也能在事务外单独调用 —— 否则每个写操作都要写两份签名。
+ */
+export type DbExecutor = Database | DbTransaction;
+
 export type DbClient = {
   db: Database;
   /** 优雅停机时调用 */

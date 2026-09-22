@@ -8,7 +8,7 @@
 
 import { randomInt } from 'node:crypto';
 
-import type { Database, Site } from '@recado/db';
+import type { DbExecutor, Site } from '@recado/db';
 import { err, ok, type PublicSiteConfig, type Result } from '@recado/shared';
 
 import { findSiteByKey, insertSite, updateSiteKey } from './sites.data';
@@ -41,7 +41,7 @@ export function originPolicyOf(settings: Record<string, unknown>): OriginPolicy 
  * 都能立刻区分是「配置没传」「key 写错」还是「站点被站长停用了」。
  */
 export async function resolveActiveSiteByKey(
-  db: Database,
+  db: DbExecutor,
   rawKey: string | null,
 ): Promise<Result<Site, SiteError>> {
   const key = rawKey?.trim();
@@ -267,7 +267,7 @@ const SITE_KEY_MAX_ATTEMPTS = 5;
  * 重试而不是先查后插：并发下「先查再插」仍有竞态，唯一约束才是权威判定。
  */
 export async function createSite(
-  db: Database,
+  db: DbExecutor,
   input: CreateSiteInput,
 ): Promise<Result<Site, SiteError>> {
   const settings = { ...parseSiteSettings({}), ...input.settings };
@@ -299,7 +299,7 @@ export async function createSite(
  * 站点失去明确的失效语义。
  */
 export async function rotateSiteKey(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
 ): Promise<Result<Site, SiteError>> {
   for (let attempt = 0; attempt < SITE_KEY_MAX_ATTEMPTS; attempt += 1) {

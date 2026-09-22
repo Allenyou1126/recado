@@ -5,7 +5,7 @@
  * 因此「同一个邮箱 = 同一个人」这条规则必须稳定，邮箱规范化放在这里统一做。
  */
 
-import type { Database, Member } from '@recado/db';
+import type { DbExecutor, Member } from '@recado/db';
 
 import { upsertMember, type MemberProfile } from './members.data';
 
@@ -30,7 +30,7 @@ export function normalizeEmail(email: string): string {
  * 不做「先查再插」——那在并发下会撞唯一约束。
  */
 export async function resolveMember(
-  db: Database,
+  db: DbExecutor,
   siteId: string,
   profile: { email: string; nickname?: string | null; website?: string | null },
 ): Promise<Member> {
