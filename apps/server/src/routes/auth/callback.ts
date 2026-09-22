@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import { startSession } from '@recado/core';
 import { createFileRoute } from '@tanstack/react-router';
 
@@ -6,10 +8,12 @@ import {
   SESSION_COOKIE,
   readCookie,
   serializeCookie,
+  signValue,
   verifySignedValue,
 } from '../../lib/cookies.server';
 import { clientIp } from '../../lib/http/client-ip';
 import { errorResponse } from '../../lib/http/respond';
+import { CSRF_COOKIE } from '../../lib/middleware/csrf';
 import { dbMiddleware } from '../../lib/middleware/db';
 import { completeAuthorization } from '../../lib/oidc.server';
 
@@ -101,6 +105,23 @@ export const Route = createFileRoute('/auth/callback')({
             sameSite: 'Lax',
             maxAgeSeconds: context.env.SESSION_TTL_HOURS * 3600,
           }),
+        );
+
+        // CSRF 双重提交用的 token：**刻意不加 HttpOnly** ——
+        // 前端必须能读出来放进请求头，这正是双重提交模式的运作方式。
+        // 它只在「浏览器自动携带 Cookie」的场景下有意义，因此与服务端会话分开存储。
+        headers.append(
+          'set-cookie',
+          serializeCookie(
+            CSRF_COOKIE,
+            signValue(randomBytes(24).toString('base64url'), context.env.SESSION_SECRET),
+            {
+              httpOnly: false,
+              secure: context.env.NODE_ENV === 'production',
+              sameSite: 'Lax',
+              maxAgeSeconds: context.env.SESSION_TTL_HOURS * 3600,
+            },
+          ),
         );
 
         // 流程态用完即弃

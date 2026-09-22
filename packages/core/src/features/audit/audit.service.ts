@@ -64,3 +64,12 @@ export async function recordAudit(db: DbExecutor, params: RecordAuditParams): Pr
 export async function queryAuditLogs(db: DbExecutor, query: AuditQuery) {
   return listAuditLogs(db, query);
 }
+
+/**
+ * 审计日志查询的对外入口。
+ *
+ * 数据层函数只在本文件里用；接口层与 SSR 数据加载都从这里取，
+ * 保证「审计怎么读」也只有一处实现。
+ */
+export { listAuditLogs } from './audit.data';
+export type { AuditQuery } from './audit.data';

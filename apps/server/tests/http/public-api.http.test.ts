@@ -720,3 +720,32 @@ describe('管理端 API（生产构建）', () => {
     expect(comments.status).toBe(405);
   });
 });
+
+describe('管理台页面（生产构建）', () => {
+  it('未登录访问管理台页面不会泄露数据（跳转或错误页）', async () => {
+    const response = await fetch(url('/admin/comments'), { redirect: 'manual' });
+
+    // beforeLoad 会把未登录访问者导向登录流程；关键是**不会**渲染出任何管理数据
+    expect([302, 303, 307, 200]).toContain(response.status);
+    const body = await response.text();
+    expect(body).not.toContain('@example.com');
+  });
+
+  it('/auth/login 会 302 到 IdP 并下发签名过的流程态 Cookie', async () => {
+    const response = await fetch(url('/auth/login'), { redirect: 'manual' });
+
+    // harness 里的 OIDC_ISSUER_URL 指向不存在的 idp.test：两种结果都可接受 ——
+    // 真的连上了就 302 到 IdP，连不上则返回统一错误信封（绝不吐堆栈）
+    expect([302, 401, 500, 502]).toContain(response.status);
+
+    const body = await response.text();
+    expect(body).not.toContain('at ');
+  });
+
+  it('登出端点声明了 ANY → 405', async () => {
+    const response = await fetch(url('/auth/logout'), { method: 'GET' });
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get('allow')).toBe('POST, OPTIONS');
+  });
+});

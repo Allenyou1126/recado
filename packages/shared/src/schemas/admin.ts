@@ -119,3 +119,58 @@ export const AdminSiteStatsSchema = z.object({
 });
 
 export type AdminSiteStats = z.infer<typeof AdminSiteStatsSchema>;
+
+/** 创建站点（管理台与 CLI 共用同一套校验） */
+export const AdminCreateSiteInputSchema = z.object({
+  name: z.string().min(1).max(100),
+  allowedOrigins: z.array(z.string()).max(50).default([]),
+  settings: z.record(z.string(), z.unknown()).default({}),
+});
+
+export type AdminCreateSiteInput = z.infer<typeof AdminCreateSiteInputSchema>;
+
+/** 更新站点：只提交要改的字段 */
+export const AdminUpdateSiteInputSchema = z
+  .object({
+    name: z.string().min(1).max(100).optional(),
+    status: z.enum(['active', 'disabled']).optional(),
+    allowedOrigins: z.array(z.string()).max(50).optional(),
+    settings: z.record(z.string(), z.unknown()).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: '至少要提供一个字段' });
+
+export type AdminUpdateSiteInput = z.infer<typeof AdminUpdateSiteInputSchema>;
+
+/** 更新成员：审核声誉与待审状态 */
+export const AdminUpdateMemberInputSchema = z
+  .object({
+    reviewRequired: z.boolean().optional(),
+    spamCount: z.number().int().min(0).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: '至少要提供一个字段' });
+
+export type AdminUpdateMemberInput = z.infer<typeof AdminUpdateMemberInputSchema>;
+
+/** 指派 / 取消标签 */
+export const AdminAssignLabelInputSchema = z.object({
+  labelId: z.string().min(1),
+  assigned: z.boolean(),
+});
+
+export type AdminAssignLabelInput = z.infer<typeof AdminAssignLabelInputSchema>;
+
+/** 标签 CRUD */
+export const AdminLabelInputSchema = z.object({
+  name: z.string().min(1).max(50),
+  color: z.string().max(32).nullable().default(null),
+  sort: z.number().int().min(0).max(9999).default(0),
+});
+
+export type AdminLabelInput = z.infer<typeof AdminLabelInputSchema>;
+
+/** 发信测试：即时反馈 SMTP 错误，因此必须同步等待结果 */
+export const AdminTestEmailInputSchema = z.object({
+  to: z.string().min(3).max(254),
+});
+
+export type AdminTestEmailInput = z.infer<typeof AdminTestEmailInputSchema>;

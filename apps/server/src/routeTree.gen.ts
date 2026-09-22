@@ -10,15 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthedRouteRouteImport } from './routes/_authed/route'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as InternalOutboxDrainRouteImport } from './routes/internal/outbox-drain'
+import { Route as AuthedAdminIndexRouteImport } from './routes/_authed/admin/index'
+import { Route as AuthedAdminAuditRouteImport } from './routes/_authed/admin/audit'
+import { Route as AuthedAdminCommentsRouteImport } from './routes/_authed/admin/comments'
+import { Route as AuthedAdminEmailRouteImport } from './routes/_authed/admin/email'
+import { Route as AuthedAdminMembersRouteImport } from './routes/_authed/admin/members'
+import { Route as AuthedAdminOriginsRouteImport } from './routes/_authed/admin/origins'
+import { Route as AuthedAdminSitesRouteImport } from './routes/_authed/admin/sites'
 import { Route as ApiV1ConfigRouteImport } from './routes/api/v1/config'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1/health'
 import { Route as ApiV1RenderRouteImport } from './routes/api/v1/render'
 import { Route as ApiV1UnsubscribeRouteImport } from './routes/api/v1/unsubscribe'
 import { Route as ApiV1AdminMeRouteImport } from './routes/api/v1/admin/me'
+import { Route as ApiV1AdminTestEmailRouteImport } from './routes/api/v1/admin/test-email'
 import { Route as ApiV1CommentsIndexRouteImport } from './routes/api/v1/comments/index'
 import { Route as ApiV1CommentsCountRouteImport } from './routes/api/v1/comments/count'
 import { Route as ApiV1CommentsRecentRouteImport } from './routes/api/v1/comments/recent'
@@ -26,11 +35,23 @@ import { Route as ApiV1ThreadsSplatRouteImport } from './routes/api/v1/threads/$
 import { Route as ApiV1AdminCommentsIndexRouteImport } from './routes/api/v1/admin/comments/index'
 import { Route as ApiV1AdminCommentsIdRouteImport } from './routes/api/v1/admin/comments/$id'
 import { Route as ApiV1AdminCommentsBatchRouteImport } from './routes/api/v1/admin/comments/batch'
+import { Route as ApiV1AdminLabelsIndexRouteImport } from './routes/api/v1/admin/labels/index'
+import { Route as ApiV1AdminLabelsIdRouteImport } from './routes/api/v1/admin/labels/$id'
+import { Route as ApiV1AdminMembersIdRouteImport } from './routes/api/v1/admin/members/$id'
+import { Route as ApiV1AdminSitesIndexRouteImport } from './routes/api/v1/admin/sites/index'
+import { Route as ApiV1AdminSitesIdRouteImport } from './routes/api/v1/admin/sites/$id'
 import { Route as ApiV1CommentsIdRepliesRouteImport } from './routes/api/v1/comments/$id/replies'
+import { Route as ApiV1AdminMembersIdLabelsRouteImport } from './routes/api/v1/admin/members/$id/labels'
+import { Route as ApiV1AdminOutboxIdRetryRouteImport } from './routes/api/v1/admin/outbox/$id/retry'
+import { Route as ApiV1AdminSitesIdRotateKeyRouteImport } from './routes/api/v1/admin/sites/$id/rotate-key'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedRouteRoute = AuthedRouteRouteImport.update({
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -52,6 +73,41 @@ const InternalOutboxDrainRoute = InternalOutboxDrainRouteImport.update({
   id: '/internal/outbox-drain',
   path: '/internal/outbox-drain',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedAdminIndexRoute = AuthedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthedRouteRoute,
+} as any)
+const AuthedAdminAuditRoute = AuthedAdminAuditRouteImport.update({
+  id: '/admin/audit',
+  path: '/admin/audit',
+  getParentRoute: () => AuthedRouteRoute,
+} as any)
+const AuthedAdminCommentsRoute = AuthedAdminCommentsRouteImport.update({
+  id: '/admin/comments',
+  path: '/admin/comments',
+  getParentRoute: () => AuthedRouteRoute,
+} as any)
+const AuthedAdminEmailRoute = AuthedAdminEmailRouteImport.update({
+  id: '/admin/email',
+  path: '/admin/email',
+  getParentRoute: () => AuthedRouteRoute,
+} as any)
+const AuthedAdminMembersRoute = AuthedAdminMembersRouteImport.update({
+  id: '/admin/members',
+  path: '/admin/members',
+  getParentRoute: () => AuthedRouteRoute,
+} as any)
+const AuthedAdminOriginsRoute = AuthedAdminOriginsRouteImport.update({
+  id: '/admin/origins',
+  path: '/admin/origins',
+  getParentRoute: () => AuthedRouteRoute,
+} as any)
+const AuthedAdminSitesRoute = AuthedAdminSitesRouteImport.update({
+  id: '/admin/sites',
+  path: '/admin/sites',
+  getParentRoute: () => AuthedRouteRoute,
 } as any)
 const ApiV1ConfigRoute = ApiV1ConfigRouteImport.update({
   id: '/api/v1/config',
@@ -76,6 +132,11 @@ const ApiV1UnsubscribeRoute = ApiV1UnsubscribeRouteImport.update({
 const ApiV1AdminMeRoute = ApiV1AdminMeRouteImport.update({
   id: '/api/v1/admin/me',
   path: '/api/v1/admin/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminTestEmailRoute = ApiV1AdminTestEmailRouteImport.update({
+  id: '/api/v1/admin/test-email',
+  path: '/api/v1/admin/test-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1CommentsIndexRoute = ApiV1CommentsIndexRouteImport.update({
@@ -113,11 +174,53 @@ const ApiV1AdminCommentsBatchRoute = ApiV1AdminCommentsBatchRouteImport.update({
   path: '/api/v1/admin/comments/batch',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AdminLabelsIndexRoute = ApiV1AdminLabelsIndexRouteImport.update({
+  id: '/api/v1/admin/labels/',
+  path: '/api/v1/admin/labels/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminLabelsIdRoute = ApiV1AdminLabelsIdRouteImport.update({
+  id: '/api/v1/admin/labels/$id',
+  path: '/api/v1/admin/labels/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminMembersIdRoute = ApiV1AdminMembersIdRouteImport.update({
+  id: '/api/v1/admin/members/$id',
+  path: '/api/v1/admin/members/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminSitesIndexRoute = ApiV1AdminSitesIndexRouteImport.update({
+  id: '/api/v1/admin/sites/',
+  path: '/api/v1/admin/sites/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminSitesIdRoute = ApiV1AdminSitesIdRouteImport.update({
+  id: '/api/v1/admin/sites/$id',
+  path: '/api/v1/admin/sites/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1CommentsIdRepliesRoute = ApiV1CommentsIdRepliesRouteImport.update({
   id: '/api/v1/comments/$id/replies',
   path: '/api/v1/comments/$id/replies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AdminMembersIdLabelsRoute =
+  ApiV1AdminMembersIdLabelsRouteImport.update({
+    id: '/labels',
+    path: '/labels',
+    getParentRoute: () => ApiV1AdminMembersIdRoute,
+  } as any)
+const ApiV1AdminOutboxIdRetryRoute = ApiV1AdminOutboxIdRetryRouteImport.update({
+  id: '/api/v1/admin/outbox/$id/retry',
+  path: '/api/v1/admin/outbox/$id/retry',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminSitesIdRotateKeyRoute =
+  ApiV1AdminSitesIdRotateKeyRouteImport.update({
+    id: '/rotate-key',
+    path: '/rotate-key',
+    getParentRoute: () => ApiV1AdminSitesIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -125,19 +228,35 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/internal/outbox-drain': typeof InternalOutboxDrainRoute
+  '/admin/audit': typeof AuthedAdminAuditRoute
+  '/admin/comments': typeof AuthedAdminCommentsRoute
+  '/admin/email': typeof AuthedAdminEmailRoute
+  '/admin/members': typeof AuthedAdminMembersRoute
+  '/admin/origins': typeof AuthedAdminOriginsRoute
+  '/admin/sites': typeof AuthedAdminSitesRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
   '/api/v1/unsubscribe': typeof ApiV1UnsubscribeRoute
+  '/admin/': typeof AuthedAdminIndexRoute
   '/api/v1/admin/me': typeof ApiV1AdminMeRoute
+  '/api/v1/admin/test-email': typeof ApiV1AdminTestEmailRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
   '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
   '/api/v1/comments/': typeof ApiV1CommentsIndexRoute
   '/api/v1/admin/comments/$id': typeof ApiV1AdminCommentsIdRoute
   '/api/v1/admin/comments/batch': typeof ApiV1AdminCommentsBatchRoute
+  '/api/v1/admin/labels/$id': typeof ApiV1AdminLabelsIdRoute
+  '/api/v1/admin/members/$id': typeof ApiV1AdminMembersIdRouteWithChildren
+  '/api/v1/admin/sites/$id': typeof ApiV1AdminSitesIdRouteWithChildren
   '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
   '/api/v1/admin/comments/': typeof ApiV1AdminCommentsIndexRoute
+  '/api/v1/admin/labels/': typeof ApiV1AdminLabelsIndexRoute
+  '/api/v1/admin/sites/': typeof ApiV1AdminSitesIndexRoute
+  '/api/v1/admin/members/$id/labels': typeof ApiV1AdminMembersIdLabelsRoute
+  '/api/v1/admin/outbox/$id/retry': typeof ApiV1AdminOutboxIdRetryRoute
+  '/api/v1/admin/sites/$id/rotate-key': typeof ApiV1AdminSitesIdRotateKeyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -145,40 +264,73 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/internal/outbox-drain': typeof InternalOutboxDrainRoute
+  '/admin/audit': typeof AuthedAdminAuditRoute
+  '/admin/comments': typeof AuthedAdminCommentsRoute
+  '/admin/email': typeof AuthedAdminEmailRoute
+  '/admin/members': typeof AuthedAdminMembersRoute
+  '/admin/origins': typeof AuthedAdminOriginsRoute
+  '/admin/sites': typeof AuthedAdminSitesRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
   '/api/v1/unsubscribe': typeof ApiV1UnsubscribeRoute
+  '/admin': typeof AuthedAdminIndexRoute
   '/api/v1/admin/me': typeof ApiV1AdminMeRoute
+  '/api/v1/admin/test-email': typeof ApiV1AdminTestEmailRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
   '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
   '/api/v1/comments': typeof ApiV1CommentsIndexRoute
   '/api/v1/admin/comments/$id': typeof ApiV1AdminCommentsIdRoute
   '/api/v1/admin/comments/batch': typeof ApiV1AdminCommentsBatchRoute
+  '/api/v1/admin/labels/$id': typeof ApiV1AdminLabelsIdRoute
+  '/api/v1/admin/members/$id': typeof ApiV1AdminMembersIdRouteWithChildren
+  '/api/v1/admin/sites/$id': typeof ApiV1AdminSitesIdRouteWithChildren
   '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
   '/api/v1/admin/comments': typeof ApiV1AdminCommentsIndexRoute
+  '/api/v1/admin/labels': typeof ApiV1AdminLabelsIndexRoute
+  '/api/v1/admin/sites': typeof ApiV1AdminSitesIndexRoute
+  '/api/v1/admin/members/$id/labels': typeof ApiV1AdminMembersIdLabelsRoute
+  '/api/v1/admin/outbox/$id/retry': typeof ApiV1AdminOutboxIdRetryRoute
+  '/api/v1/admin/sites/$id/rotate-key': typeof ApiV1AdminSitesIdRotateKeyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/internal/outbox-drain': typeof InternalOutboxDrainRoute
+  '/_authed/admin/audit': typeof AuthedAdminAuditRoute
+  '/_authed/admin/comments': typeof AuthedAdminCommentsRoute
+  '/_authed/admin/email': typeof AuthedAdminEmailRoute
+  '/_authed/admin/members': typeof AuthedAdminMembersRoute
+  '/_authed/admin/origins': typeof AuthedAdminOriginsRoute
+  '/_authed/admin/sites': typeof AuthedAdminSitesRoute
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
   '/api/v1/unsubscribe': typeof ApiV1UnsubscribeRoute
+  '/_authed/admin/': typeof AuthedAdminIndexRoute
   '/api/v1/admin/me': typeof ApiV1AdminMeRoute
+  '/api/v1/admin/test-email': typeof ApiV1AdminTestEmailRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
   '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
   '/api/v1/comments/': typeof ApiV1CommentsIndexRoute
   '/api/v1/admin/comments/$id': typeof ApiV1AdminCommentsIdRoute
   '/api/v1/admin/comments/batch': typeof ApiV1AdminCommentsBatchRoute
+  '/api/v1/admin/labels/$id': typeof ApiV1AdminLabelsIdRoute
+  '/api/v1/admin/members/$id': typeof ApiV1AdminMembersIdRouteWithChildren
+  '/api/v1/admin/sites/$id': typeof ApiV1AdminSitesIdRouteWithChildren
   '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
   '/api/v1/admin/comments/': typeof ApiV1AdminCommentsIndexRoute
+  '/api/v1/admin/labels/': typeof ApiV1AdminLabelsIndexRoute
+  '/api/v1/admin/sites/': typeof ApiV1AdminSitesIndexRoute
+  '/api/v1/admin/members/$id/labels': typeof ApiV1AdminMembersIdLabelsRoute
+  '/api/v1/admin/outbox/$id/retry': typeof ApiV1AdminOutboxIdRetryRoute
+  '/api/v1/admin/sites/$id/rotate-key': typeof ApiV1AdminSitesIdRotateKeyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -188,19 +340,35 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/internal/outbox-drain'
+    | '/admin/audit'
+    | '/admin/comments'
+    | '/admin/email'
+    | '/admin/members'
+    | '/admin/origins'
+    | '/admin/sites'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
     | '/api/v1/unsubscribe'
+    | '/admin/'
     | '/api/v1/admin/me'
+    | '/api/v1/admin/test-email'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
     | '/api/v1/threads/$'
     | '/api/v1/comments/'
     | '/api/v1/admin/comments/$id'
     | '/api/v1/admin/comments/batch'
+    | '/api/v1/admin/labels/$id'
+    | '/api/v1/admin/members/$id'
+    | '/api/v1/admin/sites/$id'
     | '/api/v1/comments/$id/replies'
     | '/api/v1/admin/comments/'
+    | '/api/v1/admin/labels/'
+    | '/api/v1/admin/sites/'
+    | '/api/v1/admin/members/$id/labels'
+    | '/api/v1/admin/outbox/$id/retry'
+    | '/api/v1/admin/sites/$id/rotate-key'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -208,43 +376,77 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/internal/outbox-drain'
+    | '/admin/audit'
+    | '/admin/comments'
+    | '/admin/email'
+    | '/admin/members'
+    | '/admin/origins'
+    | '/admin/sites'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
     | '/api/v1/unsubscribe'
+    | '/admin'
     | '/api/v1/admin/me'
+    | '/api/v1/admin/test-email'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
     | '/api/v1/threads/$'
     | '/api/v1/comments'
     | '/api/v1/admin/comments/$id'
     | '/api/v1/admin/comments/batch'
+    | '/api/v1/admin/labels/$id'
+    | '/api/v1/admin/members/$id'
+    | '/api/v1/admin/sites/$id'
     | '/api/v1/comments/$id/replies'
     | '/api/v1/admin/comments'
+    | '/api/v1/admin/labels'
+    | '/api/v1/admin/sites'
+    | '/api/v1/admin/members/$id/labels'
+    | '/api/v1/admin/outbox/$id/retry'
+    | '/api/v1/admin/sites/$id/rotate-key'
   id:
     | '__root__'
     | '/'
+    | '/_authed'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
     | '/internal/outbox-drain'
+    | '/_authed/admin/audit'
+    | '/_authed/admin/comments'
+    | '/_authed/admin/email'
+    | '/_authed/admin/members'
+    | '/_authed/admin/origins'
+    | '/_authed/admin/sites'
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
     | '/api/v1/unsubscribe'
+    | '/_authed/admin/'
     | '/api/v1/admin/me'
+    | '/api/v1/admin/test-email'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
     | '/api/v1/threads/$'
     | '/api/v1/comments/'
     | '/api/v1/admin/comments/$id'
     | '/api/v1/admin/comments/batch'
+    | '/api/v1/admin/labels/$id'
+    | '/api/v1/admin/members/$id'
+    | '/api/v1/admin/sites/$id'
     | '/api/v1/comments/$id/replies'
     | '/api/v1/admin/comments/'
+    | '/api/v1/admin/labels/'
+    | '/api/v1/admin/sites/'
+    | '/api/v1/admin/members/$id/labels'
+    | '/api/v1/admin/outbox/$id/retry'
+    | '/api/v1/admin/sites/$id/rotate-key'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthedRouteRoute: typeof AuthedRouteRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
@@ -254,14 +456,21 @@ export interface RootRouteChildren {
   ApiV1RenderRoute: typeof ApiV1RenderRoute
   ApiV1UnsubscribeRoute: typeof ApiV1UnsubscribeRoute
   ApiV1AdminMeRoute: typeof ApiV1AdminMeRoute
+  ApiV1AdminTestEmailRoute: typeof ApiV1AdminTestEmailRoute
   ApiV1CommentsCountRoute: typeof ApiV1CommentsCountRoute
   ApiV1CommentsRecentRoute: typeof ApiV1CommentsRecentRoute
   ApiV1ThreadsSplatRoute: typeof ApiV1ThreadsSplatRoute
   ApiV1CommentsIndexRoute: typeof ApiV1CommentsIndexRoute
   ApiV1AdminCommentsIdRoute: typeof ApiV1AdminCommentsIdRoute
   ApiV1AdminCommentsBatchRoute: typeof ApiV1AdminCommentsBatchRoute
+  ApiV1AdminLabelsIdRoute: typeof ApiV1AdminLabelsIdRoute
+  ApiV1AdminMembersIdRoute: typeof ApiV1AdminMembersIdRouteWithChildren
+  ApiV1AdminSitesIdRoute: typeof ApiV1AdminSitesIdRouteWithChildren
   ApiV1CommentsIdRepliesRoute: typeof ApiV1CommentsIdRepliesRoute
   ApiV1AdminCommentsIndexRoute: typeof ApiV1AdminCommentsIndexRoute
+  ApiV1AdminLabelsIndexRoute: typeof ApiV1AdminLabelsIndexRoute
+  ApiV1AdminSitesIndexRoute: typeof ApiV1AdminSitesIndexRoute
+  ApiV1AdminOutboxIdRetryRoute: typeof ApiV1AdminOutboxIdRetryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -271,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -300,6 +516,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/internal/outbox-drain'
       preLoaderRoute: typeof InternalOutboxDrainRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/admin/': {
+      id: '/_authed/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthedAdminIndexRouteImport
+      parentRoute: typeof AuthedRouteRoute
+    }
+    '/_authed/admin/audit': {
+      id: '/_authed/admin/audit'
+      path: '/admin/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AuthedAdminAuditRouteImport
+      parentRoute: typeof AuthedRouteRoute
+    }
+    '/_authed/admin/comments': {
+      id: '/_authed/admin/comments'
+      path: '/admin/comments'
+      fullPath: '/admin/comments'
+      preLoaderRoute: typeof AuthedAdminCommentsRouteImport
+      parentRoute: typeof AuthedRouteRoute
+    }
+    '/_authed/admin/email': {
+      id: '/_authed/admin/email'
+      path: '/admin/email'
+      fullPath: '/admin/email'
+      preLoaderRoute: typeof AuthedAdminEmailRouteImport
+      parentRoute: typeof AuthedRouteRoute
+    }
+    '/_authed/admin/members': {
+      id: '/_authed/admin/members'
+      path: '/admin/members'
+      fullPath: '/admin/members'
+      preLoaderRoute: typeof AuthedAdminMembersRouteImport
+      parentRoute: typeof AuthedRouteRoute
+    }
+    '/_authed/admin/origins': {
+      id: '/_authed/admin/origins'
+      path: '/admin/origins'
+      fullPath: '/admin/origins'
+      preLoaderRoute: typeof AuthedAdminOriginsRouteImport
+      parentRoute: typeof AuthedRouteRoute
+    }
+    '/_authed/admin/sites': {
+      id: '/_authed/admin/sites'
+      path: '/admin/sites'
+      fullPath: '/admin/sites'
+      preLoaderRoute: typeof AuthedAdminSitesRouteImport
+      parentRoute: typeof AuthedRouteRoute
     }
     '/api/v1/config': {
       id: '/api/v1/config'
@@ -334,6 +599,13 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/admin/me'
       fullPath: '/api/v1/admin/me'
       preLoaderRoute: typeof ApiV1AdminMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/test-email': {
+      id: '/api/v1/admin/test-email'
+      path: '/api/v1/admin/test-email'
+      fullPath: '/api/v1/admin/test-email'
+      preLoaderRoute: typeof ApiV1AdminTestEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/comments/': {
@@ -385,6 +657,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1AdminCommentsBatchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/admin/labels/': {
+      id: '/api/v1/admin/labels/'
+      path: '/api/v1/admin/labels'
+      fullPath: '/api/v1/admin/labels/'
+      preLoaderRoute: typeof ApiV1AdminLabelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/labels/$id': {
+      id: '/api/v1/admin/labels/$id'
+      path: '/api/v1/admin/labels/$id'
+      fullPath: '/api/v1/admin/labels/$id'
+      preLoaderRoute: typeof ApiV1AdminLabelsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/members/$id': {
+      id: '/api/v1/admin/members/$id'
+      path: '/api/v1/admin/members/$id'
+      fullPath: '/api/v1/admin/members/$id'
+      preLoaderRoute: typeof ApiV1AdminMembersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/sites/': {
+      id: '/api/v1/admin/sites/'
+      path: '/api/v1/admin/sites'
+      fullPath: '/api/v1/admin/sites/'
+      preLoaderRoute: typeof ApiV1AdminSitesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/sites/$id': {
+      id: '/api/v1/admin/sites/$id'
+      path: '/api/v1/admin/sites/$id'
+      fullPath: '/api/v1/admin/sites/$id'
+      preLoaderRoute: typeof ApiV1AdminSitesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/comments/$id/replies': {
       id: '/api/v1/comments/$id/replies'
       path: '/api/v1/comments/$id/replies'
@@ -392,11 +699,79 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1CommentsIdRepliesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/admin/members/$id/labels': {
+      id: '/api/v1/admin/members/$id/labels'
+      path: '/labels'
+      fullPath: '/api/v1/admin/members/$id/labels'
+      preLoaderRoute: typeof ApiV1AdminMembersIdLabelsRouteImport
+      parentRoute: typeof ApiV1AdminMembersIdRoute
+    }
+    '/api/v1/admin/outbox/$id/retry': {
+      id: '/api/v1/admin/outbox/$id/retry'
+      path: '/api/v1/admin/outbox/$id/retry'
+      fullPath: '/api/v1/admin/outbox/$id/retry'
+      preLoaderRoute: typeof ApiV1AdminOutboxIdRetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/sites/$id/rotate-key': {
+      id: '/api/v1/admin/sites/$id/rotate-key'
+      path: '/rotate-key'
+      fullPath: '/api/v1/admin/sites/$id/rotate-key'
+      preLoaderRoute: typeof ApiV1AdminSitesIdRotateKeyRouteImport
+      parentRoute: typeof ApiV1AdminSitesIdRoute
+    }
   }
 }
 
+interface AuthedRouteRouteChildren {
+  AuthedAdminAuditRoute: typeof AuthedAdminAuditRoute
+  AuthedAdminCommentsRoute: typeof AuthedAdminCommentsRoute
+  AuthedAdminEmailRoute: typeof AuthedAdminEmailRoute
+  AuthedAdminMembersRoute: typeof AuthedAdminMembersRoute
+  AuthedAdminOriginsRoute: typeof AuthedAdminOriginsRoute
+  AuthedAdminSitesRoute: typeof AuthedAdminSitesRoute
+  AuthedAdminIndexRoute: typeof AuthedAdminIndexRoute
+}
+
+const AuthedRouteRouteChildren: AuthedRouteRouteChildren = {
+  AuthedAdminAuditRoute: AuthedAdminAuditRoute,
+  AuthedAdminCommentsRoute: AuthedAdminCommentsRoute,
+  AuthedAdminEmailRoute: AuthedAdminEmailRoute,
+  AuthedAdminMembersRoute: AuthedAdminMembersRoute,
+  AuthedAdminOriginsRoute: AuthedAdminOriginsRoute,
+  AuthedAdminSitesRoute: AuthedAdminSitesRoute,
+  AuthedAdminIndexRoute: AuthedAdminIndexRoute,
+}
+
+const AuthedRouteRouteWithChildren = AuthedRouteRoute._addFileChildren(
+  AuthedRouteRouteChildren,
+)
+
+interface ApiV1AdminMembersIdRouteChildren {
+  ApiV1AdminMembersIdLabelsRoute: typeof ApiV1AdminMembersIdLabelsRoute
+}
+
+const ApiV1AdminMembersIdRouteChildren: ApiV1AdminMembersIdRouteChildren = {
+  ApiV1AdminMembersIdLabelsRoute: ApiV1AdminMembersIdLabelsRoute,
+}
+
+const ApiV1AdminMembersIdRouteWithChildren =
+  ApiV1AdminMembersIdRoute._addFileChildren(ApiV1AdminMembersIdRouteChildren)
+
+interface ApiV1AdminSitesIdRouteChildren {
+  ApiV1AdminSitesIdRotateKeyRoute: typeof ApiV1AdminSitesIdRotateKeyRoute
+}
+
+const ApiV1AdminSitesIdRouteChildren: ApiV1AdminSitesIdRouteChildren = {
+  ApiV1AdminSitesIdRotateKeyRoute: ApiV1AdminSitesIdRotateKeyRoute,
+}
+
+const ApiV1AdminSitesIdRouteWithChildren =
+  ApiV1AdminSitesIdRoute._addFileChildren(ApiV1AdminSitesIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthedRouteRoute: AuthedRouteRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
@@ -406,14 +781,21 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1RenderRoute: ApiV1RenderRoute,
   ApiV1UnsubscribeRoute: ApiV1UnsubscribeRoute,
   ApiV1AdminMeRoute: ApiV1AdminMeRoute,
+  ApiV1AdminTestEmailRoute: ApiV1AdminTestEmailRoute,
   ApiV1CommentsCountRoute: ApiV1CommentsCountRoute,
   ApiV1CommentsRecentRoute: ApiV1CommentsRecentRoute,
   ApiV1ThreadsSplatRoute: ApiV1ThreadsSplatRoute,
   ApiV1CommentsIndexRoute: ApiV1CommentsIndexRoute,
   ApiV1AdminCommentsIdRoute: ApiV1AdminCommentsIdRoute,
   ApiV1AdminCommentsBatchRoute: ApiV1AdminCommentsBatchRoute,
+  ApiV1AdminLabelsIdRoute: ApiV1AdminLabelsIdRoute,
+  ApiV1AdminMembersIdRoute: ApiV1AdminMembersIdRouteWithChildren,
+  ApiV1AdminSitesIdRoute: ApiV1AdminSitesIdRouteWithChildren,
   ApiV1CommentsIdRepliesRoute: ApiV1CommentsIdRepliesRoute,
   ApiV1AdminCommentsIndexRoute: ApiV1AdminCommentsIndexRoute,
+  ApiV1AdminLabelsIndexRoute: ApiV1AdminLabelsIndexRoute,
+  ApiV1AdminSitesIndexRoute: ApiV1AdminSitesIndexRoute,
+  ApiV1AdminOutboxIdRetryRoute: ApiV1AdminOutboxIdRetryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

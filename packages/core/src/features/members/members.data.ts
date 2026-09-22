@@ -171,3 +171,20 @@ export async function findEmailsByMemberIds(
 
   return new Map(rows.map((row) => [row.id, row.email]));
 }
+
+/** 直接设置垃圾计数（管理员手动清零/纠正） */
+export async function setMemberSpamCount(
+  db: DbExecutor,
+  siteId: string,
+  memberId: string,
+  value: number,
+): Promise<Member> {
+  const [row] = await db
+    .update(members)
+    .set({ spamCount: Math.max(value, 0) })
+    .where(and(eq(members.siteId, siteId), eq(members.id, memberId)))
+    .returning();
+
+  if (!row) throw new Error('setMemberSpamCount 未命中成员');
+  return row;
+}

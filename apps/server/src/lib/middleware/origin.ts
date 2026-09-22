@@ -14,6 +14,7 @@ import { evaluateOrigin } from '@recado/core';
 import { createMiddleware } from '@tanstack/react-start';
 
 import { errorResponse } from '../http/respond';
+import { recordOriginRejection } from '../origin-audit.server';
 import { siteMiddleware } from './site';
 
 export const originMiddleware = createMiddleware({ type: 'request' })
@@ -29,6 +30,21 @@ export const originMiddleware = createMiddleware({ type: 'request' })
         { reason: evaluated.error.reason, siteId: context.site.id },
         'origin rejected',
       );
+
+      // 自检工具的数据来源：站长看不到访客的控制台，只能靠这里
+      recordOriginRejection({
+        siteId: context.site.id,
+        origin:
+          evaluated.error.details !== undefined &&
+          typeof evaluated.error.details === 'object' &&
+          evaluated.error.details !== null &&
+          'origin' in evaluated.error.details
+            ? String(Reflect.get(evaluated.error.details, 'origin'))
+            : (request.headers.get('origin') ?? request.headers.get('referer')),
+        reason: evaluated.error.reason,
+        path: new URL(request.url).pathname,
+      });
+
       return errorResponse(evaluated.error);
     }
 

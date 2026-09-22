@@ -245,7 +245,7 @@ export async function retryOutboxItem(
   return requeue(db, siteId, id);
 }
 
-export { isUnsubscribed } from './notifications.data';
+export { findOutboxItem, isUnsubscribed, listOutbox, listUnsubscribes } from './notifications.data';
 
 /** 已退订邮箱不再下发给该站点 */
 export async function filterUnsubscribed(
