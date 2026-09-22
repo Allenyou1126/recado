@@ -14,6 +14,7 @@
  *   remark-rehype          mdast → hast（allowDangerousHtml 默认关闭：原文里的
  *                          原始 HTML 根本不会进入 AST，这是第一道闸门）
  *   rehype-emoji           `:name:` → `<img class="emoji">`（T2.4）
+ *   rehype-external-links  站外链接补 rel（T2.5）
  *   rehype-sanitize        白名单消毒（**默认 schema，一条都不放宽**）
  *   [rehype-mathjax]       数学公式（T2.3，可信插件；必须排在 Shiki 之前，见下）
  *   [rehype-shiki]         代码高亮（T2.2，可信插件）
@@ -46,6 +47,7 @@ import type { BuiltinLanguage } from 'shiki';
 import { unified } from 'unified';
 
 import { resolveEmojiMap, rehypeEmoji } from './emoji';
+import { rehypeExternalLinks } from './links';
 import { RenderErrors, type RenderError } from './rendering.errors';
 import {
   RenderOptionsSchema,
@@ -71,16 +73,22 @@ const PLAIN_TEXT = 'text';
 /**
  * 消毒白名单：默认 schema + 一条与安全无关的必要补充。
  *
- * 表情图片是我们自己生成的 `<img class="emoji">`，而 GitHub 的默认白名单不允许
- * `img` 带 className —— 不补这一条，`class="emoji"` 会被静默剥掉，前端就没法
- * 给表情单独设样式。除此之外不放宽任何规则：类名是固定字面量，
- * `src` 仍受默认的协议白名单（http/https）与相对路径规则约束。
+ * 补两条我们自己生成的属性，值都是固定字面量，调用方无从借此注入：
+ *
+ * - `img` 的 `className=emoji`：默认白名单不允许 img 带 className，
+ *   不补就会被静默剥掉，前端无法给表情单独设样式
+ * - `a` 的 `rel`：默认白名单允许 href 但不含 rel，不补外链的
+ *   `nofollow ugc noopener noreferrer` 会被丢掉
+ *
+ * 除此之外不放宽任何规则，`src`/`href` 仍受默认的协议白名单约束。
  */
 export const SANITIZE_SCHEMA: Schema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
     img: [...(defaultSchema.attributes?.['img'] ?? []), ['className', 'emoji']],
+    // 外链的 rel 由上面的插件写入，默认白名单不含它
+    a: [...(defaultSchema.attributes?.['a'] ?? []), 'rel'],
   },
 };
 
@@ -109,6 +117,11 @@ export function buildProcessor(options: RenderOptions) {
 
   processor.use(remarkRehype);
   processor.use(rehypeEmoji, resolveEmojiMap(options.emojis));
+
+  if (options.linkNofollow) {
+    processor.use(rehypeExternalLinks);
+  }
+
   processor.use(rehypeSanitize, SANITIZE_SCHEMA);
 
   if (options.math) {

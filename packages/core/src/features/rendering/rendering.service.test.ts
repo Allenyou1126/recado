@@ -186,3 +186,35 @@ describe('表情短代码（T2.4）', () => {
     expect(result.data?.html).toContain(':evil:');
   });
 });
+
+describe('外链处理（T2.5）', () => {
+  it('站外链接补上 rel', async () => {
+    const { html } = await render('[外站](https://example.com/post)');
+
+    expect(html).toContain('rel="nofollow ugc noopener noreferrer"');
+  });
+
+  it('站内相对链接与锚点不加 rel', async () => {
+    const { html } = await render('[站内](/posts/1) 与 [锚点](#section)');
+
+    expect(html).not.toContain('rel=');
+  });
+
+  it('GFM 自动链接同样被处理', async () => {
+    const { html } = await render('见 https://example.com/auto');
+
+    expect(html).toContain('rel="nofollow ugc noopener noreferrer"');
+  });
+
+  it('linkNofollow=false 时不加 rel', async () => {
+    const result = await renderMarkdown('[外站](https://example.com)', { linkNofollow: false });
+
+    expect(result.data?.html).not.toContain('rel=');
+  });
+
+  it('javascript: 链接被消毒掉，不会因为补 rel 而复活', async () => {
+    const { html } = await render('[点我](javascript:alert(1))');
+
+    expect(html).not.toContain('javascript:');
+  });
+});
