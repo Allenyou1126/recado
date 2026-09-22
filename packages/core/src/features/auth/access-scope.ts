@@ -7,7 +7,7 @@
  * 定义在 `core` 而不是 `server`：判定逻辑（roles.ts）是纯领域规则，
  * 必须能脱离框架单测。
  */
-export type AccessScope = { type: 'instance' } | { type: 'site'; siteIds: readonly string[] };
+export type AccessScope = { type: 'instance' } | { type: 'site'; siteIds: string[] };
 
 /** 判断权限范围是否覆盖某站点 —— 「已登录」不等于「可访问任意站点」 */
 export function scopeAllowsSite(scope: AccessScope, siteId: string): boolean {

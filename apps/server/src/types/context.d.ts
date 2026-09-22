@@ -61,6 +61,10 @@ declare global {
   type ActorContext = DbContext & {
     actor: Actor;
     scope: AccessScope;
+    /** 本次认证的来源：Cookie 认证需要 CSRF 双重提交，Bearer 不需要 */
+    authVia: 'cookie' | 'bearer';
+    /** 本次命中的角色名（供后台展示与诊断） */
+    matchedRoles: string[];
   };
 
   /** 第四级：管理端 + 已校验该主体对本站点有权限 */

@@ -91,6 +91,7 @@ export const actorMiddleware = createMiddleware({ type: 'request' })
         scope: actor.scope,
         // 认证来源要传给 CSRF 中间件：只有 Cookie 认证才需要双重提交校验
         authVia: resolved.via,
+        matchedRoles: actor.matchedRoles,
       },
     });
   });

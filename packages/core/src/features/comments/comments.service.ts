@@ -7,8 +7,9 @@
  */
 
 import type { Comment, DbExecutor, Site } from '@recado/db';
-import { err, ok, type PublicComment, type Result } from '@recado/shared';
+import { err, ok, type AdminComment, type PublicComment, type Result } from '@recado/shared';
 
+import { findEmailsByMemberIds } from '../members/members.data';
 import { resolveMember } from '../members/members.service';
 import { determineInitialStatus } from '../moderation/moderation.service';
 import { renderMarkdown, renderOptionsFromSettings } from '../rendering/rendering.service';
@@ -17,9 +18,9 @@ import { countCommentAdded, ensureThread } from '../threads/threads.service';
 import {
   countCommentsByPaths,
   countCommentsByStatus,
+  findCommentById as findCommentByIdRepo,
   countRepliesByRoots,
   findAncestry,
-  findCommentById,
   findLastCommentAtByIp,
   insertComment,
   listAdminComments as listAdminCommentsRepo,
@@ -361,7 +362,71 @@ export async function listAdminComments(ctx: CommentContext, query: AdminListQue
   return listAdminCommentsRepo(ctx.db, ctx.site.id, query);
 }
 
+/**
+ * 管理端评论视图。
+ *
+ * 与公开视图的差别只有一处：**管理员可以看到 email / ip / user_agent**
+ * （§5.2 明确「仅管理员可见」）。因此这里也必须显式构造 ——
+ * 直接透传数据库行会让「以后新增的敏感列」自动出现在后台接口里。
+ */
+export function toAdminComment(
+  row: Comment,
+  email: string,
+  labels: ReadonlyArray<{ name: string; color: string | null }> = [],
+): AdminComment {
+  return {
+    ...toPublicComment(row, { labels }),
+    status: row.status,
+    memberId: row.memberId,
+    email,
+    ip: row.ip,
+    userAgent: row.userAgent,
+    contentMd: row.contentMd,
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt === null ? null : row.deletedAt.toISOString(),
+  };
+}
+
+/** 后台评论列表：一次补齐成员邮箱，避免逐条查库 */
+export async function listCommentsForAdmin(
+  ctx: CommentContext,
+  query: Omit<AdminListQuery, 'limit' | 'offset'> & { page: number; pageSize: number },
+) {
+  const { rows, total } = await listAdminCommentsRepo(ctx.db, ctx.site.id, {
+    ...query,
+    limit: query.pageSize,
+    offset: (query.page - 1) * query.pageSize,
+  });
+
+  const emails = await findEmailsByMemberIds(
+    ctx.db,
+    ctx.site.id,
+    rows.map((row) => row.memberId),
+  );
+
+  return {
+    comments: rows.map((row) => toAdminComment(row, emails.get(row.memberId) ?? '')),
+    total,
+    page: query.page,
+    pageSize: query.pageSize,
+    totalPages: Math.max(Math.ceil(total / query.pageSize), 1),
+  };
+}
+
 /** 站点级状态计数（仪表盘与待审队列） */
 export async function summarizeByStatus(ctx: CommentContext) {
   return countCommentsByStatus(ctx.db, ctx.site.id);
+}
+
+/**
+ * 按 id 取评论（已带站点隔离）。
+ *
+ * 供接口层在「改原文 / 改状态」之后回读最新行，组装管理端视图。
+ */
+export async function findCommentById(
+  db: CommentContext['db'],
+  siteId: string,
+  commentId: string,
+): Promise<Comment | null> {
+  return (await findCommentByIdRepo(db, siteId, commentId)) ?? null;
 }

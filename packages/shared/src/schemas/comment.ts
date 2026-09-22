@@ -20,13 +20,16 @@ export const CommentLabelSchema = z.object({
 export type CommentLabel = z.infer<typeof CommentLabelSchema>;
 
 /**
- * 公开评论对象的**骨架字段**。
+ * 评论对象的**骨架字段**。
+ *
+ * 公开与管理端共用：管理端在此之上补 `email` / `ip` / `user_agent`
+ * （见 schemas/admin.ts），而不是另写一份结构。
  *
  * 除 `deleted` 占位外，公开列表里只会出现 `approved`（见 §5.4 状态机）。
  * `deleted` 的评论只有骨架字段有意义，前端应渲染「该评论已删除」占位 ——
  * 这是决策 Q-04 的语义：删除不级联，子回复仍要能显示。
  */
-const PublicCommentBaseSchema = z.object({
+export const PublicCommentBaseSchema = z.object({
   id: z.string(),
   path: z.string(),
 

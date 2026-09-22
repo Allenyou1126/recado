@@ -10,7 +10,7 @@
  * 前置：测试库可用（compose 起 postgres 即可，helper 会自动建库并跑迁移）。
  */
 
-import { createSite } from '@recado/core';
+import { createSite, startSession } from '@recado/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { openTestDatabase } from '../helpers/test-db';
@@ -25,6 +25,8 @@ let lenientSiteKey: string;
 let commentSiteKey: string;
 /** 限流测试用站点：60 秒最小间隔 */
 let throttledSiteKey: string;
+/** 评论流程站点的 id（管理端按 UUID 定位站点） */
+let commentSiteId: string;
 let db: ReturnType<typeof openTestDatabase>;
 
 beforeAll(async () => {
@@ -58,6 +60,7 @@ beforeAll(async () => {
   siteKey = strict.data.key;
   lenientSiteKey = lenient.data.key;
   commentSiteKey = commentSite.data.key;
+  commentSiteId = commentSite.data.id;
   throttledSiteKey = throttledSite.data.key;
 
   server = await startBuiltServer();
@@ -511,5 +514,209 @@ describe('评论公开端点（生产构建）', () => {
     expect(list.status).toBe(405);
     expect(list.headers.get('allow')).toBe('GET, HEAD, POST, OPTIONS');
     expect(recent.status).toBe(405);
+  });
+});
+
+describe('管理端 API（生产构建）', () => {
+  let adminSiteId: string;
+  let sessionCookie: string;
+  const CSRF_TOKEN = 'csrf-token-for-tests';
+
+  beforeAll(async () => {
+    const created = await createSite(db.db, {
+      name: '管理端测试站',
+      allowedOrigins: [ALLOWED_ORIGIN],
+      settings: { minIntervalSeconds: 0 },
+    });
+    if (!created.data) throw new Error('创建管理端测试站失败');
+    adminSiteId = created.data.id;
+
+    // 直接建一个实例级管理员的会话：这里要验的是 HTTP 行为，
+    // OIDC 握手本身由 auth 的集成测试覆盖
+    const session = await startSession(db.db, {
+      identity: {
+        oidcSubject: 'https://idp.test#http-admin',
+        kind: 'human',
+        email: 'admin@example.com',
+        displayName: 'HTTP Admin',
+        avatarUrl: null,
+      },
+      roles: ['recado.OWNER'],
+      rolePrefix: 'recado',
+      ip: null,
+      userAgent: 'vitest',
+    });
+
+    if (!session.data) throw new Error('创建测试会话失败');
+    sessionCookie = `recado_session=${session.data.token}`;
+  });
+
+  const adminHeaders = (): Record<string, string> => ({
+    cookie: sessionCookie,
+    'X-Recado-Site-Id': adminSiteId,
+    'content-type': 'application/json',
+  });
+
+  it('未认证请求被拒，且不泄漏任何数据', async () => {
+    const response = await fetch(url('/api/v1/admin/comments'), {
+      headers: { 'X-Recado-Site-Id': adminSiteId },
+    });
+
+    expect(response.status).toBe(401);
+    expect((await response.json()).error.reason).toBe('AUTH_SESSION_INVALID');
+  });
+
+  it('管理端点不检查来源头（脚本调用没有 Origin，Q-12）', async () => {
+    const response = await fetch(url('/api/v1/admin/me'), {
+      headers: { cookie: sessionCookie, Origin: 'https://evil.example.net' },
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it('/admin/me 返回身份与权限范围，且不回显 oidc_subject', async () => {
+    const response = await fetch(url('/api/v1/admin/me'), {
+      headers: { cookie: sessionCookie },
+    });
+    const body = await response.json();
+    const raw = JSON.stringify(body);
+
+    expect(response.status).toBe(200);
+    expect(body.data.kind).toBe('human');
+    expect(body.data.email).toBe('admin@example.com');
+    expect(body.data.scope).toEqual({ type: 'instance' });
+    expect(body.data.matchedRoles).toEqual(['recado.OWNER']);
+
+    // 内部标识不外泄
+    expect(raw).not.toContain('oidc_subject');
+    expect(raw).not.toContain('https://idp.test#http-admin');
+  });
+
+  it('站点管理员访问未授权站点被拒（403，不是 404）', async () => {
+    const scoped = await startSession(db.db, {
+      identity: {
+        oidcSubject: 'https://idp.test#scoped-admin',
+        kind: 'human',
+        email: 'scoped@example.com',
+        displayName: 'Scoped',
+        avatarUrl: null,
+      },
+      roles: ['recado.ADMIN.11111111-1111-1111-1111-111111111111'],
+      rolePrefix: 'recado',
+      ip: null,
+      userAgent: 'vitest',
+    });
+    if (!scoped.data) throw new Error('创建测试会话失败');
+
+    const response = await fetch(url('/api/v1/admin/comments'), {
+      headers: {
+        cookie: `recado_session=${scoped.data.token}`,
+        'X-Recado-Site-Id': adminSiteId,
+      },
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.reason).toBe('FORBIDDEN_SITE_SCOPE');
+  });
+
+  it('Cookie 认证的写操作必须带 CSRF 双重提交', async () => {
+    const withoutToken = await fetch(url('/api/v1/admin/comments/batch'), {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({ ids: ['00000000-0000-0000-0000-000000000000'], status: 'spam' }),
+    });
+
+    expect(withoutToken.status).toBe(403);
+    expect((await withoutToken.json()).error.reason).toBe('FORBIDDEN_CSRF_TOKEN_INVALID');
+
+    const mismatched = await fetch(url('/api/v1/admin/comments/batch'), {
+      method: 'POST',
+      headers: {
+        ...adminHeaders(),
+        'x-recado-csrf-token': 'wrong',
+        cookie: `${sessionCookie}; recado_csrf=${CSRF_TOKEN}`,
+      },
+      body: JSON.stringify({ ids: ['00000000-0000-0000-0000-000000000000'], status: 'spam' }),
+    });
+
+    expect(mismatched.status).toBe(403);
+  });
+
+  it('带齐 CSRF 后可以批量处理，且返回部分失败明细', async () => {
+    // 先发一条评论
+    const created = await fetch(url('/api/v1/comments'), {
+      method: 'POST',
+      headers: {
+        'X-Recado-Site': commentSiteKey,
+        Origin: ALLOWED_ORIGIN,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        path: '/admin/batch',
+        content: '待标记垃圾',
+        nickname: 'Alice',
+        email: 'alice@example.com',
+      }),
+    });
+    const commentId: string = (await created.json()).data.id;
+
+    const response = await fetch(url('/api/v1/admin/comments/batch'), {
+      method: 'POST',
+      headers: {
+        ...adminHeaders(),
+        'X-Recado-Site-Id': commentSiteId,
+        'x-recado-csrf-token': CSRF_TOKEN,
+        cookie: `${sessionCookie}; recado_csrf=${CSRF_TOKEN}`,
+      },
+      body: JSON.stringify({
+        ids: [commentId, '00000000-0000-0000-0000-000000000000'],
+        status: 'spam',
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error.reason).toBe('CONFLICT_BATCH_PARTIAL_FAILURE');
+    expect(body.error.failures).toEqual([
+      { commentId: '00000000-0000-0000-0000-000000000000', reason: 'NOT_FOUND_COMMENT' },
+    ]);
+  });
+
+  it('后台列表能看到 pending / spam 与管理员可见字段', async () => {
+    const response = await fetch(url('/api/v1/admin/comments?status=approved'), {
+      headers: { cookie: sessionCookie, 'X-Recado-Site-Id': commentSiteId },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    // 前面已经发过评论，这里必然有数据
+    expect(body.data.comments.length).toBeGreaterThan(0);
+
+    const first = body.data.comments[0];
+    // 管理端可以看到敏感字段，公开端不行 —— 这正是两套契约分开的原因
+    expect(first).toHaveProperty('email');
+    expect(first).toHaveProperty('ip');
+    expect(first).toHaveProperty('contentMd');
+    // 但内部标识仍然不外泄
+    expect(JSON.stringify(first)).not.toContain('oidc_subject');
+  });
+
+  it('每个管理端点都声明了 ANY → 405（认证后）', async () => {
+    const me = await fetch(url('/api/v1/admin/me'), {
+      method: 'POST',
+      headers: { cookie: sessionCookie },
+    });
+    const comments = await fetch(url('/api/v1/admin/comments'), {
+      method: 'DELETE',
+      headers: {
+        cookie: `${sessionCookie}; recado_csrf=${CSRF_TOKEN}`,
+        'X-Recado-Site-Id': adminSiteId,
+        'x-recado-csrf-token': CSRF_TOKEN,
+      },
+    });
+
+    expect(me.status).toBe(405);
+    expect(me.headers.get('allow')).toBe('GET, HEAD, OPTIONS');
+    expect(comments.status).toBe(405);
   });
 });

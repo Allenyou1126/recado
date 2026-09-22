@@ -16,10 +16,14 @@ import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as ApiV1ConfigRouteImport } from './routes/api/v1/config'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1/health'
 import { Route as ApiV1RenderRouteImport } from './routes/api/v1/render'
+import { Route as ApiV1AdminMeRouteImport } from './routes/api/v1/admin/me'
 import { Route as ApiV1CommentsIndexRouteImport } from './routes/api/v1/comments/index'
 import { Route as ApiV1CommentsCountRouteImport } from './routes/api/v1/comments/count'
 import { Route as ApiV1CommentsRecentRouteImport } from './routes/api/v1/comments/recent'
 import { Route as ApiV1ThreadsSplatRouteImport } from './routes/api/v1/threads/$'
+import { Route as ApiV1AdminCommentsIndexRouteImport } from './routes/api/v1/admin/comments/index'
+import { Route as ApiV1AdminCommentsIdRouteImport } from './routes/api/v1/admin/comments/$id'
+import { Route as ApiV1AdminCommentsBatchRouteImport } from './routes/api/v1/admin/comments/batch'
 import { Route as ApiV1CommentsIdRepliesRouteImport } from './routes/api/v1/comments/$id/replies'
 
 const IndexRoute = IndexRouteImport.update({
@@ -57,6 +61,11 @@ const ApiV1RenderRoute = ApiV1RenderRouteImport.update({
   path: '/api/v1/render',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AdminMeRoute = ApiV1AdminMeRouteImport.update({
+  id: '/api/v1/admin/me',
+  path: '/api/v1/admin/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1CommentsIndexRoute = ApiV1CommentsIndexRouteImport.update({
   id: '/api/v1/comments/',
   path: '/api/v1/comments/',
@@ -77,6 +86,21 @@ const ApiV1ThreadsSplatRoute = ApiV1ThreadsSplatRouteImport.update({
   path: '/api/v1/threads/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AdminCommentsIndexRoute = ApiV1AdminCommentsIndexRouteImport.update({
+  id: '/api/v1/admin/comments/',
+  path: '/api/v1/admin/comments/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminCommentsIdRoute = ApiV1AdminCommentsIdRouteImport.update({
+  id: '/api/v1/admin/comments/$id',
+  path: '/api/v1/admin/comments/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AdminCommentsBatchRoute = ApiV1AdminCommentsBatchRouteImport.update({
+  id: '/api/v1/admin/comments/batch',
+  path: '/api/v1/admin/comments/batch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1CommentsIdRepliesRoute = ApiV1CommentsIdRepliesRouteImport.update({
   id: '/api/v1/comments/$id/replies',
   path: '/api/v1/comments/$id/replies',
@@ -91,11 +115,15 @@ export interface FileRoutesByFullPath {
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/admin/me': typeof ApiV1AdminMeRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
   '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
   '/api/v1/comments/': typeof ApiV1CommentsIndexRoute
+  '/api/v1/admin/comments/$id': typeof ApiV1AdminCommentsIdRoute
+  '/api/v1/admin/comments/batch': typeof ApiV1AdminCommentsBatchRoute
   '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
+  '/api/v1/admin/comments/': typeof ApiV1AdminCommentsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -105,11 +133,15 @@ export interface FileRoutesByTo {
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/admin/me': typeof ApiV1AdminMeRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
   '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
   '/api/v1/comments': typeof ApiV1CommentsIndexRoute
+  '/api/v1/admin/comments/$id': typeof ApiV1AdminCommentsIdRoute
+  '/api/v1/admin/comments/batch': typeof ApiV1AdminCommentsBatchRoute
   '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
+  '/api/v1/admin/comments': typeof ApiV1AdminCommentsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -120,11 +152,15 @@ export interface FileRoutesById {
   '/api/v1/config': typeof ApiV1ConfigRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/api/v1/render': typeof ApiV1RenderRoute
+  '/api/v1/admin/me': typeof ApiV1AdminMeRoute
   '/api/v1/comments/count': typeof ApiV1CommentsCountRoute
   '/api/v1/comments/recent': typeof ApiV1CommentsRecentRoute
   '/api/v1/threads/$': typeof ApiV1ThreadsSplatRoute
   '/api/v1/comments/': typeof ApiV1CommentsIndexRoute
+  '/api/v1/admin/comments/$id': typeof ApiV1AdminCommentsIdRoute
+  '/api/v1/admin/comments/batch': typeof ApiV1AdminCommentsBatchRoute
   '/api/v1/comments/$id/replies': typeof ApiV1CommentsIdRepliesRoute
+  '/api/v1/admin/comments/': typeof ApiV1AdminCommentsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -136,11 +172,15 @@ export interface FileRouteTypes {
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
+    | '/api/v1/admin/me'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
     | '/api/v1/threads/$'
     | '/api/v1/comments/'
+    | '/api/v1/admin/comments/$id'
+    | '/api/v1/admin/comments/batch'
     | '/api/v1/comments/$id/replies'
+    | '/api/v1/admin/comments/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -150,11 +190,15 @@ export interface FileRouteTypes {
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
+    | '/api/v1/admin/me'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
     | '/api/v1/threads/$'
     | '/api/v1/comments'
+    | '/api/v1/admin/comments/$id'
+    | '/api/v1/admin/comments/batch'
     | '/api/v1/comments/$id/replies'
+    | '/api/v1/admin/comments'
   id:
     | '__root__'
     | '/'
@@ -164,11 +208,15 @@ export interface FileRouteTypes {
     | '/api/v1/config'
     | '/api/v1/health'
     | '/api/v1/render'
+    | '/api/v1/admin/me'
     | '/api/v1/comments/count'
     | '/api/v1/comments/recent'
     | '/api/v1/threads/$'
     | '/api/v1/comments/'
+    | '/api/v1/admin/comments/$id'
+    | '/api/v1/admin/comments/batch'
     | '/api/v1/comments/$id/replies'
+    | '/api/v1/admin/comments/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -179,11 +227,15 @@ export interface RootRouteChildren {
   ApiV1ConfigRoute: typeof ApiV1ConfigRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
   ApiV1RenderRoute: typeof ApiV1RenderRoute
+  ApiV1AdminMeRoute: typeof ApiV1AdminMeRoute
   ApiV1CommentsCountRoute: typeof ApiV1CommentsCountRoute
   ApiV1CommentsRecentRoute: typeof ApiV1CommentsRecentRoute
   ApiV1ThreadsSplatRoute: typeof ApiV1ThreadsSplatRoute
   ApiV1CommentsIndexRoute: typeof ApiV1CommentsIndexRoute
+  ApiV1AdminCommentsIdRoute: typeof ApiV1AdminCommentsIdRoute
+  ApiV1AdminCommentsBatchRoute: typeof ApiV1AdminCommentsBatchRoute
   ApiV1CommentsIdRepliesRoute: typeof ApiV1CommentsIdRepliesRoute
+  ApiV1AdminCommentsIndexRoute: typeof ApiV1AdminCommentsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -237,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1RenderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/admin/me': {
+      id: '/api/v1/admin/me'
+      path: '/api/v1/admin/me'
+      fullPath: '/api/v1/admin/me'
+      preLoaderRoute: typeof ApiV1AdminMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/comments/': {
       id: '/api/v1/comments/'
       path: '/api/v1/comments'
@@ -265,6 +324,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1ThreadsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/admin/comments/': {
+      id: '/api/v1/admin/comments/'
+      path: '/api/v1/admin/comments'
+      fullPath: '/api/v1/admin/comments/'
+      preLoaderRoute: typeof ApiV1AdminCommentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/comments/$id': {
+      id: '/api/v1/admin/comments/$id'
+      path: '/api/v1/admin/comments/$id'
+      fullPath: '/api/v1/admin/comments/$id'
+      preLoaderRoute: typeof ApiV1AdminCommentsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/admin/comments/batch': {
+      id: '/api/v1/admin/comments/batch'
+      path: '/api/v1/admin/comments/batch'
+      fullPath: '/api/v1/admin/comments/batch'
+      preLoaderRoute: typeof ApiV1AdminCommentsBatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/comments/$id/replies': {
       id: '/api/v1/comments/$id/replies'
       path: '/api/v1/comments/$id/replies'
@@ -283,11 +363,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1ConfigRoute: ApiV1ConfigRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
   ApiV1RenderRoute: ApiV1RenderRoute,
+  ApiV1AdminMeRoute: ApiV1AdminMeRoute,
   ApiV1CommentsCountRoute: ApiV1CommentsCountRoute,
   ApiV1CommentsRecentRoute: ApiV1CommentsRecentRoute,
   ApiV1ThreadsSplatRoute: ApiV1ThreadsSplatRoute,
   ApiV1CommentsIndexRoute: ApiV1CommentsIndexRoute,
+  ApiV1AdminCommentsIdRoute: ApiV1AdminCommentsIdRoute,
+  ApiV1AdminCommentsBatchRoute: ApiV1AdminCommentsBatchRoute,
   ApiV1CommentsIdRepliesRoute: ApiV1CommentsIdRepliesRoute,
+  ApiV1AdminCommentsIndexRoute: ApiV1AdminCommentsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

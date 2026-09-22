@@ -5,7 +5,7 @@
  */
 
 import { members, type DbExecutor, type Member } from '@recado/db';
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 
 /** 按邮箱查成员；`email` 是 citext，大小写不敏感 */
 export async function findMemberByEmail(
@@ -154,4 +154,20 @@ export async function findMemberById(
   return db.query.members.findFirst({
     where: and(eq(members.siteId, siteId), eq(members.id, memberId)),
   });
+}
+
+/** 批量取成员邮箱：后台列表一次查完，避免 N+1 */
+export async function findEmailsByMemberIds(
+  db: DbExecutor,
+  siteId: string,
+  memberIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (memberIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({ id: members.id, email: members.email })
+    .from(members)
+    .where(and(eq(members.siteId, siteId), inArray(members.id, [...memberIds])));
+
+  return new Map(rows.map((row) => [row.id, row.email]));
 }

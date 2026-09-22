@@ -24,12 +24,8 @@ export type Actor = {
 /**
  * 主体可访问的范围。
  *
- * - `instance`：`<前缀>.OWNER`，全实例
- * - `site`：`<前缀>.ADMIN.<站点 UUID>`，仅列出的站点
+ * 类型与判定函数都来自 `@recado/core` 的 auth 功能 —— 那是纯领域规则，
+ * 必须能脱离框架单测。这里只做**再导出**，避免出现两份实现漂移。
  */
-export type AccessScope = { type: 'instance' } | { type: 'site'; siteIds: readonly string[] };
-
-/** 判断主体是否有权访问某站点 —— 「已登录」不等于「可访问任意站点」 */
-export function scopeAllowsSite(scope: AccessScope, siteId: string): boolean {
-  return scope.type === 'instance' || scope.siteIds.includes(siteId);
-}
+export type { AccessScope } from '@recado/core';
+export { scopeAllowsSite } from '@recado/core';

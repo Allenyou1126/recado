@@ -20,6 +20,21 @@ const CLI = fileURLToPath(new URL('../../scripts/cli.ts', import.meta.url));
 
 type CliResult = { status: number; stdout: string; stderr: string };
 
+/** `execFileSync` 抛出的错误在 TS 里是 unknown，用类型守卫而不是断言收窄 */
+function asCliFailure(cause: unknown): Partial<CliResult> {
+  if (typeof cause !== 'object' || cause === null) return {};
+
+  const status = Reflect.get(cause, 'status');
+  const stdout = Reflect.get(cause, 'stdout');
+  const stderr = Reflect.get(cause, 'stderr');
+
+  return {
+    ...(typeof status === 'number' ? { status } : {}),
+    ...(typeof stdout === 'string' ? { stdout } : {}),
+    ...(typeof stderr === 'string' ? { stderr } : {}),
+  };
+}
+
 function runCli(args: string[]): CliResult {
   try {
     const stdout = execFileSync(TSX, [CLI, ...args], {
@@ -44,7 +59,7 @@ function runCli(args: string[]): CliResult {
 
     return { status: 0, stdout, stderr: '' };
   } catch (cause) {
-    const failure = cause as { status?: number; stdout?: string; stderr?: string };
+    const failure = asCliFailure(cause);
 
     return {
       status: failure.status ?? 1,

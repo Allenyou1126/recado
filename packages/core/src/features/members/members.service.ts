@@ -7,7 +7,7 @@
 
 import type { DbExecutor, Member } from '@recado/db';
 
-import { upsertMember, type MemberProfile } from './members.data';
+import { findMemberById, upsertMember, type MemberProfile } from './members.data';
 
 /**
  * 邮箱规范化：去空白 + 转小写。
@@ -42,4 +42,14 @@ export async function resolveMember(
   };
 
   return upsertMember(db, siteId, normalized);
+}
+
+/** 取成员邮箱（管理端视图用）；找不到返回 null 而不是抛 */
+export async function findMemberEmail(
+  db: DbExecutor,
+  siteId: string,
+  memberId: string,
+): Promise<string | null> {
+  const member = await findMemberById(db, siteId, memberId);
+  return member?.email ?? null;
 }
