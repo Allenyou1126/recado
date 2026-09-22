@@ -20,6 +20,9 @@
  *   notifications / rendering / auth / audit
  */
 
+export * from './features/rendering/emoji';
+export * from './features/rendering/links';
+export * from './features/rendering/mentions';
 export * from './features/rendering/rendering.errors';
 export * from './features/rendering/rendering.schema';
 export * from './features/rendering/rendering.service';

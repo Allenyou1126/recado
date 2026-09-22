@@ -15,6 +15,7 @@
  *                          原始 HTML 根本不会进入 AST，这是第一道闸门）
  *   rehype-emoji           `:name:` → `<img class="emoji">`（T2.4）
  *   rehype-external-links  站外链接补 rel（T2.5）
+ *   rehype-mentions        提取 @提及（T2.6，同样只认非代码文本）
  *   rehype-sanitize        白名单消毒（**默认 schema，一条都不放宽**）
  *   [rehype-mathjax]       数学公式（T2.3，可信插件；必须排在 Shiki 之前，见下）
  *   [rehype-shiki]         代码高亮（T2.2，可信插件）
@@ -48,6 +49,7 @@ import { unified } from 'unified';
 
 import { resolveEmojiMap, rehypeEmoji } from './emoji';
 import { rehypeExternalLinks } from './links';
+import { rehypeMentions } from './mentions';
 import { RenderErrors, type RenderError } from './rendering.errors';
 import {
   RenderOptionsSchema,
@@ -104,7 +106,7 @@ export function contentBytes(markdown: string): number {
  * 而站点级配置（是否高亮、是否渲染公式）是按请求变化的。
  * 真正的重活（Shiki highlighter）由插件内部的单例缓存兜住，不受影响。
  */
-export function buildProcessor(options: RenderOptions) {
+export function buildProcessor(options: RenderOptions, mentions: string[] = []) {
   const processor = unified().use(remarkParse);
 
   if (options.gfm) {
@@ -116,6 +118,7 @@ export function buildProcessor(options: RenderOptions) {
   }
 
   processor.use(remarkRehype);
+  processor.use(rehypeMentions, (name: string) => mentions.push(name));
   processor.use(rehypeEmoji, resolveEmojiMap(options.emojis));
 
   if (options.linkNofollow) {
@@ -162,12 +165,15 @@ export async function renderMarkdown(
     return err(RenderErrors.empty());
   }
 
+  const mentions: string[] = [];
+
   try {
-    const file = await buildProcessor(resolved).process(markdown);
+    const file = await buildProcessor(resolved, mentions).process(markdown);
 
     return ok({
       html: String(file),
-      mentions: [],
+      // 去重但保持出现顺序：同一个人被 @ 两次只通知一次
+      mentions: [...new Set(mentions)],
       bytes,
     });
   } catch {
