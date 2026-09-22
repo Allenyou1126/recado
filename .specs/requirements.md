@@ -525,7 +525,7 @@ admins ───── sessions
 | 功能点 | 说明 | 优先级 |
 | --- | --- | --- |
 | 版本化 | `/api/v1/*`，破坏性变更走新版本 | P0 |
-| 错误模型 | HTTP 状态码 + `{ error: { code, message, details? } }` | P0 |
+| 错误模型 | HTTP 状态码 + `{ error: { reason, message, details? } }`（成功为 `{ data }`，字段名与 `shared` 的 `DomainError` 一致） | P0 |
 | 公开端点鉴权 | 请求头 `X-Recado-Site: <site key>`（site key 是**公开标识**，不是密钥） | P0 |
 | 公开端点来源校验 | `Origin` / `Referer` 对照站点白名单；**无来源头时按站点级 `originPolicy` 决定 403 还是放行**（Q-12） | P0 |
 | 管理端点鉴权 | 会话 Cookie（浏览器）或 `Authorization: Bearer <OIDC access token>`（脚本 / CI）；**管理端点不检查来源头**（Q-12） | P0 |

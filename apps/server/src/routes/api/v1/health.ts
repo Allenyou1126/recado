@@ -1,23 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router';
 
+import { methodNotAllowed } from '../../../lib/http/method-not-allowed';
+import { jsonResponse } from '../../../lib/http/respond';
+
 /**
- * 健康检查端点。
+ * 存活探针。
  *
- * 注意 `ANY` 处理器：框架对未匹配的 HTTP 方法**不会**返回 405，
- * 而是让请求落到路由层，返回 `200 text/html`（SSR 应用外壳）。
- * 因此每个 API 路由都必须显式声明 `ANY` —— 见 AGENTS.md 硬性约束。
+ * 与 `/readyz` 的分工见 requirements.md §7.3：数据库不可用时 `/readyz` 返回 503，
+ * 而 `/healthz` 仍返回 200 —— 否则编排系统会把「数据库暂时不可用」误判为
+ * 「进程已死」并反复重启。
  */
 export const Route = createFileRoute('/api/v1/health')({
   server: {
     handlers: {
-      GET: async () =>
-        Response.json({ status: 'ok' }, { status: 200, headers: { 'Cache-Control': 'no-store' } }),
+      GET: async () => jsonResponse({ status: 'ok' }),
 
-      ANY: async () =>
-        new Response(null, {
-          status: 405,
-          headers: { Allow: 'GET, HEAD, OPTIONS' },
-        }),
+      // 未匹配的方法不会自动 405，必须显式兜住（AGENTS.md 硬性约束）
+      ANY: async () => methodNotAllowed(['GET']),
     },
   },
 });
