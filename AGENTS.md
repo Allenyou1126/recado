@@ -183,6 +183,8 @@ pnpm format             # oxfmt（含 import 排序与 Tailwind 类排序）
 pnpm format:check       # 只检查不写入
 pnpm check              # typecheck + lint + format:check，提交前跑这个
 pnpm test               # 单元 + 集成测试
+                        # 集成测试连真实 Postgres，需先起库：
+                        # docker compose -f docker/compose.yaml up -d postgres
 pnpm db:generate        # 生成 Drizzle 迁移
 pnpm db:migrate         # 执行迁移（独立步骤，不在应用启动时跑）
 ```

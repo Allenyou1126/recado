@@ -8,11 +8,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@recado/db": "workspace:*",
     "@recado/shared": "workspace:*",
     "drizzle-orm": "0.45.3"
+  },
+  "devDependencies": {
+    "vitest": "5.0.1"
   }
 }

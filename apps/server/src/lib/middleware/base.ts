@@ -14,28 +14,7 @@ import { createMiddleware } from '@tanstack/react-start';
 
 import { getEnv } from '../../config/env.server';
 import { createLogger } from '../logger.server';
-
-/** 允许上游（反向代理、SDK）传入的请求 ID 头 */
-export const REQUEST_ID_HEADER = 'x-request-id';
-
-/**
- * 请求 ID 允许的字符集。
- *
- * 上游传来的值会被写进日志，因此必须限制字符集与长度 ——
- * 否则就是一个日志注入（伪造行、塞入控制字符）的入口。
- */
-const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
-
-/** 采用上游请求 ID，不可用时自行生成 */
-export function resolveRequestId(request: Request): string {
-  const inbound = request.headers.get(REQUEST_ID_HEADER)?.trim();
-
-  if (inbound && REQUEST_ID_PATTERN.test(inbound)) {
-    return inbound;
-  }
-
-  return crypto.randomUUID();
-}
+import { resolveRequestId } from '../request-id.server';
 
 export const baseMiddleware = createMiddleware({ type: 'request' }).server(
   async ({ next, request }) => {
@@ -45,7 +24,7 @@ export const baseMiddleware = createMiddleware({ type: 'request' }).server(
     // logger 已把 requestId 绑为 child binding，后续日志不要再重复传该字段
     // （否则序列化出的 JSON 会出现同名的两个键）
     return next({
-      context: { env, requestId, logger: createLogger(env, { requestId }) },
+      context: { env, requestId, logger: createLogger(env, { bindings: { requestId } }) },
     });
   },
 );

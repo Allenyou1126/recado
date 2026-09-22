@@ -13,7 +13,7 @@
  * 额外的兜底：pino 在客户端语境下并无意义，若真被打包进来说明分层已破。
  */
 
-import { pino, stdSerializers, type Logger } from 'pino';
+import { pino, stdSerializers, type DestinationStream, type Logger } from 'pino';
 
 import type { Env } from '../config/env.server';
 
@@ -74,19 +74,28 @@ const REDACT_PATHS = [
 
 export const REDACTED = '[redacted]';
 
+export type LoggerOptions = {
+  /** 绑定的上下文字段，如 `{ requestId }`、`{ worker: 'outbox' }` */
+  bindings?: Record<string, unknown>;
+  /** 自定义输出流；仅测试需要（用于捕获日志断言脱敏结果） */
+  destination?: DestinationStream;
+};
+
 /**
  * 创建 logger。
  *
  * @param env 经校验的配置（级别来自 `LOG_LEVEL`）
- * @param bindings 绑定的上下文字段，如 `{ requestId }`、`{ worker: 'outbox' }`
  */
-export function createLogger(env: Env, bindings: Record<string, unknown> = {}): Logger {
-  const logger = pino({
+export function createLogger(env: Env, options: LoggerOptions = {}): Logger {
+  const config = {
     level: env.LOG_LEVEL,
     redact: { paths: REDACT_PATHS, censor: REDACTED },
     // 未预期异常的堆栈只进日志，绝不进响应体
     serializers: { err: stdSerializers.err },
-  });
+  } as const;
+
+  const logger = options.destination ? pino(config, options.destination) : pino(config);
+  const bindings = options.bindings ?? {};
 
   return Object.keys(bindings).length > 0 ? logger.child(bindings) : logger;
 }
