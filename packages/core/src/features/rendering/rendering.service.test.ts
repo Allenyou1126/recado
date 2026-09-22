@@ -62,3 +62,51 @@ describe('renderMarkdown', () => {
     expect(html).not.toContain('<div');
   });
 });
+
+describe('代码高亮（T2.2）', () => {
+  it('已知语言产出带内联样式的 Shiki 输出', async () => {
+    const { html } = await render('```js\nconst answer = 42;\n```');
+
+    expect(html).toContain('class="shiki');
+    expect(html).toContain('style="color:');
+    expect(html).toContain('answer');
+  });
+
+  it('未知语言降级为纯文本：保留代码块与转义，但不做着色', async () => {
+    const { html } = await render('```not-a-real-language\nplain <b>text</b>\n```');
+
+    expect(html).toContain('plain');
+    // 没有 `style="color:…"` 这类着色标记
+    expect(html).not.toContain('style="color:');
+    expect(html).not.toContain('<b>');
+  });
+
+  it('无语言标注的代码块也能给出稳定输出', async () => {
+    const { html } = await render('```\nplain\n```');
+
+    expect(html).toContain('plain');
+  });
+
+  it('行内代码不参与高亮', async () => {
+    const { html } = await render('这里是 `inline()` 代码');
+
+    expect(html).toContain('<code>inline()</code>');
+    expect(html).not.toContain('class="shiki');
+  });
+
+  it('codeHighlight=false 时原样输出代码块', async () => {
+    const result = await renderMarkdown('```js\nconst a = 1;\n```', { codeHighlight: false });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.html).toContain('<pre><code class="language-js">');
+    expect(result.data?.html).not.toContain('class="shiki');
+  });
+
+  it('高亮产物不会绕过消毒——代码内容始终被转义', async () => {
+    const { html } = await render('```html\n<script>alert(1)</script>\n```');
+
+    expect(html).not.toContain('<script>');
+    // shiki 用数字实体转义 `<`，同样是安全的
+    expect(html).toContain('&#x3C;');
+  });
+});

@@ -26,6 +26,7 @@
  */
 
 import { err, ok, type Result } from '@recado/shared';
+import rehypeShiki from '@shikijs/rehype';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
@@ -40,6 +41,20 @@ import {
   type RenderOptionsInput,
   type RenderedContent,
 } from './rendering.schema';
+
+/**
+ * 代码高亮主题。
+ *
+ * 输出内联样式（`style="color:…"`），前端**无需**引入任何 CSS ——
+ * 这是 Headless 交付形态下的正确取舍：站点不该为了看评论去装 Shiki 的样式表。
+ */
+export const CODE_THEME = 'github-light';
+
+/** 语言包按需加载的初始集合：一个都不预加载（需求 Q-09：否则构建产物会明显膨胀） */
+const PRELOADED_LANGUAGES: string[] = [];
+
+/** shiki 用于「无高亮纯文本」的内置特殊语言 */
+const PLAIN_TEXT = 'text';
 
 /** 原文字节数（UTF-8），与 `comments.content_bytes` 同口径 */
 export function contentBytes(markdown: string): number {
@@ -62,6 +77,20 @@ export function buildProcessor(options: RenderOptions) {
 
   processor.use(remarkRehype);
   processor.use(rehypeSanitize);
+
+  if (options.codeHighlight) {
+    processor.use(rehypeShiki, {
+      // 语言包在遇到代码块时按需 import，未知语言按 fallbackLanguage 退化为纯文本
+      lazy: true,
+      langs: PRELOADED_LANGUAGES,
+      theme: CODE_THEME,
+      defaultLanguage: PLAIN_TEXT,
+      fallbackLanguage: PLAIN_TEXT,
+      // 单个代码块高亮失败（例如语言包加载失败）时保留原样的代码块，
+      // 不能让一条评论的代码块拖垮整个渲染
+      onError: () => {},
+    });
+  }
 
   return processor.use(rehypeStringify);
 }
