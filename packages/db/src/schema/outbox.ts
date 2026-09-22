@@ -10,7 +10,7 @@
  * - 退订 `token` 不可猜测且长期有效（每封邮件都带，不设过期）
  */
 
-import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { comments } from './comments';
 import { sites } from './sites';
@@ -32,67 +32,84 @@ export const outboxStatus = pgEnum('outbox_status', [
   'skipped',
 ]);
 
-export const outbox = pgTable('outbox', {
-  id: uuid('id').primaryKey().defaultRandom(),
+export const outbox = pgTable(
+  'outbox',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
 
-  type: outboxType('type').notNull(),
+    type: outboxType('type').notNull(),
 
-  siteId: uuid('site_id')
-    .notNull()
-    .references(() => sites.id, { onDelete: 'cascade' }),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
 
-  /** 关联的评论；`test` 这类无上下文的邮件为空 */
-  commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'set null' }),
+    /** 关联的评论；`test` 这类无上下文的邮件为空 */
+    commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'set null' }),
 
-  toEmail: text('to_email').notNull(),
-  subject: text('subject').notNull(),
+    toEmail: text('to_email').notNull(),
+    subject: text('subject').notNull(),
 
-  /** 模板标识；集中管理，后台可预览（阶段 6） */
-  template: text('template').notNull(),
-  /** 模板变量 */
-  payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
+    /** 模板标识；集中管理，后台可预览（阶段 6） */
+    template: text('template').notNull(),
+    /** 模板变量 */
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
 
-  status: outboxStatus('status').notNull().default('queued'),
+    status: outboxStatus('status').notNull().default('queued'),
 
-  attempts: integer('attempts').notNull().default(0),
-  /** 最近一次失败原因（脱敏后）；成功后清空 */
-  lastError: text('last_error'),
+    attempts: integer('attempts').notNull().default(0),
+    /** 最近一次失败原因（脱敏后）；成功后清空 */
+    lastError: text('last_error'),
 
-  /** 幂等键：同一事件重复入队只有一条 */
-  dedupeKey: text('dedupe_key').notNull().unique(),
+    /** 幂等键：同一事件重复入队只有一条 */
+    dedupeKey: text('dedupe_key').notNull().unique(),
 
-  /** 下次尝试时间；指数退避靠它实现 */
-  scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull().defaultNow(),
-  sentAt: timestamp('sent_at', { withTimezone: true }),
+    /** 下次尝试时间；指数退避靠它实现 */
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
 
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    /**
+     * worker 轮询用：取「到点的、待发送的」任务，配合 FOR UPDATE SKIP LOCKED
+     * 保证多实例并发安全（见 stages 6 T6.4）。
+     */
+    index('outbox_status_scheduled_at_idx').on(table.status, table.scheduledAt),
+  ],
+);
 
 export const unsubscribeScope = pgEnum('unsubscribe_scope', ['site']);
 
-export const unsubscribes = pgTable('unsubscribes', {
-  id: uuid('id').primaryKey().defaultRandom(),
+export const unsubscribes = pgTable(
+  'unsubscribes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
 
-  siteId: uuid('site_id')
-    .notNull()
-    .references(() => sites.id, { onDelete: 'cascade' }),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
 
-  /** citext：与 members.email 用同一种比较语义，退订才能可靠命中 */
-  email: citext('email').notNull(),
+    /** citext：与 members.email 用同一种比较语义，退订才能可靠命中 */
+    email: citext('email').notNull(),
 
-  /** 邮件里的退订凭据；不可猜测且长期有效 */
-  token: text('token').notNull().unique(),
+    /** 邮件里的退订凭据；不可猜测且长期有效 */
+    token: text('token').notNull().unique(),
 
-  /** 目前只有站点级；保留字段以便将来扩展为实例级 */
-  scope: unsubscribeScope('scope').notNull().default('site'),
+    /** 目前只有站点级；保留字段以便将来扩展为实例级 */
+    scope: unsubscribeScope('scope').notNull().default('site'),
 
-  /** 触发退订的那封邮件对应的评论 */
-  sourceCommentId: uuid('source_comment_id').references(() => comments.id, {
-    onDelete: 'set null',
-  }),
+    /** 触发退订的那封邮件对应的评论 */
+    sourceCommentId: uuid('source_comment_id').references(() => comments.id, {
+      onDelete: 'set null',
+    }),
 
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    /** 投递前查「该邮箱是否已退订」：按站点 + 邮箱命中 */
+    index('unsubscribes_site_id_email_idx').on(table.siteId, table.email),
+  ],
+);
 
 export type OutboxItem = typeof outbox.$inferSelect;
 export type NewOutboxItem = typeof outbox.$inferInsert;

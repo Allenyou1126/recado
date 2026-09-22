@@ -19,6 +19,21 @@ import { Pool } from 'pg';
 export const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgres://recado:recado@localhost:55432/recado_test';
 
+/**
+ * 数据库扩展。
+ *
+ * `members.email` 是 citext，`CREATE TABLE` 前必须已有扩展 ——
+ * drizzle-kit 不会自动生成 `CREATE EXTENSION`，迁移文件里也要手写这一句。
+ */
+async function ensureExtensions(databaseUrl: string): Promise<void> {
+  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  try {
+    await pool.query('CREATE EXTENSION IF NOT EXISTS citext');
+  } finally {
+    await pool.end();
+  }
+}
+
 /** 构造测试库所需的 DDL 前的准备：库本身可能还不存在 */
 async function ensureDatabaseExists(): Promise<void> {
   const url = new URL(TEST_DATABASE_URL);
@@ -64,6 +79,7 @@ let ready: Promise<void> | undefined;
 export function ensureTestDatabase(): Promise<void> {
   ready ??= (async () => {
     await ensureDatabaseExists();
+    await ensureExtensions(TEST_DATABASE_URL);
     pushSchema();
   })();
 

@@ -15,5 +15,7 @@ export default defineConfig({
     // 集成测试要连真实 Postgres，默认 5s 偏紧
     testTimeout: 20_000,
     hookTimeout: 60_000,
+    // 集成测试共用一个数据库，串行执行避免相互清表
+    fileParallelism: false,
   },
 });
