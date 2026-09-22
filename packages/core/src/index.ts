@@ -26,6 +26,7 @@ export * from './features/rendering/mentions';
 export * from './features/rendering/rendering.errors';
 export * from './features/rendering/rendering.schema';
 export * from './features/rendering/rendering.service';
+export * from './features/audit/audit.service';
 export * from './features/comments/comments.errors';
 export * from './features/comments/comments.service';
 export * from './features/members/members.service';

@@ -16,15 +16,18 @@ import { siteSettings } from '../sites/sites.service';
 import { countCommentAdded, ensureThread } from '../threads/threads.service';
 import {
   countCommentsByPaths,
+  countCommentsByStatus,
   countRepliesByRoots,
   findAncestry,
   findCommentById,
   findLastCommentAtByIp,
   insertComment,
+  listAdminComments as listAdminCommentsRepo,
   listRecentComments,
   listReplies,
   listTopLevelComments,
   loadReplyPreviews,
+  type AdminListQuery,
   type ListParams,
 } from './comments.data';
 import { CommentErrors, type CommentError } from './comments.errors';
@@ -346,4 +349,19 @@ export async function checkRateLimit(
   if (elapsedSeconds >= minIntervalSeconds) return ok(null);
 
   return err(CommentErrors.tooFrequent(Math.ceil(minIntervalSeconds - elapsedSeconds)));
+}
+
+/**
+ * 后台评论列表：全维度筛选（站点 / 路径 / 状态 / 关键词 / 时间范围）。
+ *
+ * 关键词查的是 `content_md`（**原文**），不是渲染后的 HTML —— 一期用 ILIKE，
+ * `tsvector` 属 P1（决策 Q-15）。搜 HTML 会得到「搜 `**加粗**` 搜不到」这种怪现象。
+ */
+export async function listAdminComments(ctx: CommentContext, query: AdminListQuery) {
+  return listAdminCommentsRepo(ctx.db, ctx.site.id, query);
+}
+
+/** 站点级状态计数（仪表盘与待审队列） */
+export async function summarizeByStatus(ctx: CommentContext) {
+  return countCommentsByStatus(ctx.db, ctx.site.id);
 }

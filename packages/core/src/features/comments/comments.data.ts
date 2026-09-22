@@ -21,6 +21,8 @@ import {
   lte,
   sql,
   type SQL,
+  gte,
+  ilike,
 } from 'drizzle-orm';
 
 /**
@@ -291,4 +293,124 @@ export async function findLastCommentAtByIp(
     .limit(1);
 
   return result[0]?.createdAt ?? null;
+}
+
+/** 变更评论状态（软删时同时写 deleted_at） */
+export async function updateCommentStatus(
+  db: DbExecutor,
+  siteId: string,
+  commentId: string,
+  status: Comment['status'],
+): Promise<Comment | undefined> {
+  const [row] = await db
+    .update(comments)
+    .set({
+      status,
+      updatedAt: new Date(),
+      deletedAt: status === 'deleted' ? new Date() : null,
+    })
+    .where(and(eq(comments.siteId, siteId), eq(comments.id, commentId)))
+    .returning();
+
+  return row;
+}
+
+/**
+ * 管理员编辑评论：**改原文后重新渲染**。
+ *
+ * 双存设计（`content_md` + `content_html`）让这件事成为可能 ——
+ * 只存 HTML 的系统在这里只能做字符串手术。
+ */
+export async function updateCommentContent(
+  db: DbExecutor,
+  siteId: string,
+  commentId: string,
+  content: { md: string; html: string; bytes: number },
+): Promise<Comment | undefined> {
+  const [row] = await db
+    .update(comments)
+    .set({
+      contentMd: content.md,
+      contentHtml: content.html,
+      contentBytes: content.bytes,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(comments.siteId, siteId), eq(comments.id, commentId)))
+    .returning();
+
+  return row;
+}
+
+export type AdminListQuery = {
+  path?: string | undefined;
+  status?: Comment['status'] | undefined;
+  /** 关键词检索基于**原文**（content_md），一期用 ILIKE（决策 Q-15） */
+  keyword?: string | undefined;
+  from?: Date | undefined;
+  to?: Date | undefined;
+  sort: 'latest' | 'oldest';
+  limit: number;
+  offset: number;
+};
+
+function adminScope(siteId: string, query: AdminListQuery): SQL | undefined {
+  const keyword = query.keyword?.trim();
+
+  return and(
+    eq(comments.siteId, siteId),
+    query.path === undefined ? undefined : eq(comments.path, query.path),
+    query.status === undefined ? undefined : eq(comments.status, query.status),
+    keyword === undefined || keyword.length === 0
+      ? undefined
+      : ilike(comments.contentMd, `%${keyword}%`),
+    query.from === undefined ? undefined : gte(comments.createdAt, query.from),
+    query.to === undefined ? undefined : lte(comments.createdAt, query.to),
+  );
+}
+
+/** 后台评论列表：全维度筛选（Waline 的管理台没有路径/站点筛选，这是明确要补的） */
+export async function listAdminComments(
+  db: DbExecutor,
+  siteId: string,
+  query: AdminListQuery,
+): Promise<{ rows: Comment[]; total: number }> {
+  const scope = adminScope(siteId, query);
+
+  const [rows, totals] = await Promise.all([
+    db
+      .select()
+      .from(comments)
+      .where(scope)
+      .orderBy(query.sort === 'latest' ? desc(comments.createdAt) : asc(comments.createdAt))
+      .limit(query.limit)
+      .offset(query.offset),
+    db.select({ value: count() }).from(comments).where(scope),
+  ]);
+
+  return { rows, total: totals[0]?.value ?? 0 };
+}
+
+/** 站点级状态计数（仪表盘用） */
+export async function countCommentsByStatus(
+  db: DbExecutor,
+  siteId: string,
+): Promise<Record<Comment['status'], number>> {
+  const rows = await db
+    .select({ status: comments.status, value: count() })
+    .from(comments)
+    .where(eq(comments.siteId, siteId))
+    .groupBy(comments.status);
+
+  const result: Record<Comment['status'], number> = {
+    approved: 0,
+    pending: 0,
+    spam: 0,
+    deleted: 0,
+  };
+
+  for (const row of rows) {
+    result[row.status] = row.value;
+  }
+
+  return result;
 }

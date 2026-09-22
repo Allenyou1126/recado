@@ -14,7 +14,8 @@ export type CommentError =
   | DomainError<'VALIDATION_NICKNAME_REQUIRED'>
   | DomainError<'NOT_FOUND_PARENT_COMMENT'>
   | DomainError<'NOT_FOUND_COMMENT'>
-  | DomainError<'RATE_LIMITED_TOO_FREQUENT'>;
+  | DomainError<'RATE_LIMITED_TOO_FREQUENT'>
+  | DomainError<'CONFLICT_INVALID_STATUS_TRANSITION'>;
 
 export const CommentErrors = {
   nicknameRequired: () =>
@@ -26,6 +27,16 @@ export const CommentErrors = {
 
   commentNotFound: (commentId: string) =>
     domainError('NOT_FOUND_COMMENT', 'Comment not found', { commentId }),
+
+  invalidTransition: (from: string, to: string) =>
+    domainError(
+      'CONFLICT_INVALID_STATUS_TRANSITION',
+      `Cannot move a comment from ${from} to ${to}`,
+      {
+        from,
+        to,
+      },
+    ),
 
   tooFrequent: (retryAfterSeconds: number) =>
     domainError('RATE_LIMITED_TOO_FREQUENT', 'You are commenting too fast', { retryAfterSeconds }),
