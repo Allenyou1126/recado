@@ -5,7 +5,7 @@
 | 版本 | v1.0 |
 | 范围 | 需求主文档 §9「里程碑 1 — 可用内核」的全部 P0 项 |
 | 配套 | `requirements.md`（要做什么）、`decision-log.md`（为什么）、`development-standards.md`（怎么写） |
-| 状态 | ⬜ 未开始 |
+| 状态 | 🔄 进行中（阶段 0 已完成） |
 
 ---
 
@@ -40,6 +40,8 @@
 - ✅ 提交校验钩子（语义化提交 + Assisted-By）
 - ✅ 已验证：生产构建产出 `.output/server/index.mjs`、SSR 正常、
   只读端点的 `PUT` 返回 **405 + `Allow`**（框架默认返回 `200 text/html`，已用 `ANY` 处理器兜住）
+- ✅ 阶段 0 工程地基（见 §4）：环境配置校验、Context 层次、中间件链、
+  统一响应与错误映射、测试基座、Docker 编排、日志脱敏
 
 ### 未完成
 
@@ -125,7 +127,7 @@
 
 > 每完成一个阶段勾选一次，并提交 `docs(specs): 更新开发计划进度`。
 
-- [ ] 阶段 0 · 工程地基
+- [x] 阶段 0 · 工程地基
 - [ ] 阶段 1 · 数据模型
 - [ ] 阶段 2 · 内容渲染管线
 - [ ] 阶段 3 · 站点域 + 公开 API 骨架
@@ -159,11 +161,11 @@
 
 ### 验收
 
-- [ ] `pnpm check` 全绿
-- [ ] 缺 `DATABASE_URL` 启动时失败，报错信息能直接看懂缺了什么
-- [ ] 存在一个示例受保护路由，可验证：无效 site key → 统一错误信封；非白名单 Origin → 403
-- [ ] 集成测试能连真实 Postgres 跑通
-- [ ] `docker compose up` 后 Postgres 健康检查通过
+- [x] `pnpm check` 全绿
+- [x] 缺 `DATABASE_URL` 启动时失败，报错信息能直接看懂缺了什么
+- [x] 存在一个示例受保护路由，可验证：无效 site key → 统一错误信封；非白名单 Origin → 403
+- [x] 集成测试能连真实 Postgres 跑通
+- [x] `docker compose up` 后 Postgres 健康检查通过
 
 ### 已知坑
 
