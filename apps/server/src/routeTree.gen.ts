@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1/health'
+import { Route as ApiV1RenderRouteImport } from './routes/api/v1/render'
 import { Route as ApiV1SiteRouteImport } from './routes/api/v1/site'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const ApiV1HealthRoute = ApiV1HealthRouteImport.update({
   path: '/api/v1/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1RenderRoute = ApiV1RenderRouteImport.update({
+  id: '/api/v1/render',
+  path: '/api/v1/render',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1SiteRoute = ApiV1SiteRouteImport.update({
   id: '/api/v1/site',
   path: '/api/v1/site',
@@ -32,30 +38,34 @@ const ApiV1SiteRoute = ApiV1SiteRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/v1/health': typeof ApiV1HealthRoute
+  '/api/v1/render': typeof ApiV1RenderRoute
   '/api/v1/site': typeof ApiV1SiteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/v1/health': typeof ApiV1HealthRoute
+  '/api/v1/render': typeof ApiV1RenderRoute
   '/api/v1/site': typeof ApiV1SiteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/v1/health': typeof ApiV1HealthRoute
+  '/api/v1/render': typeof ApiV1RenderRoute
   '/api/v1/site': typeof ApiV1SiteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/v1/health' | '/api/v1/site'
+  fullPaths: '/' | '/api/v1/health' | '/api/v1/render' | '/api/v1/site'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/v1/health' | '/api/v1/site'
-  id: '__root__' | '/' | '/api/v1/health' | '/api/v1/site'
+  to: '/' | '/api/v1/health' | '/api/v1/render' | '/api/v1/site'
+  id: '__root__' | '/' | '/api/v1/health' | '/api/v1/render' | '/api/v1/site'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
+  ApiV1RenderRoute: typeof ApiV1RenderRoute
   ApiV1SiteRoute: typeof ApiV1SiteRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/render': {
+      id: '/api/v1/render'
+      path: '/api/v1/render'
+      fullPath: '/api/v1/render'
+      preLoaderRoute: typeof ApiV1RenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/site': {
       id: '/api/v1/site'
       path: '/api/v1/site'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
+  ApiV1RenderRoute: ApiV1RenderRoute,
   ApiV1SiteRoute: ApiV1SiteRoute,
 }
 export const routeTree = rootRouteImport

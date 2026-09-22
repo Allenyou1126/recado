@@ -23,7 +23,7 @@ export type HandlerBaseContext = Pick<BaseContext, 'requestId' | 'logger'>;
  * ⚠️ 框架传进来的是**整个 ctx 对象**（`{ context, request, params, pathname, next }`），
  * 注入的依赖在 `ctx.context` 里 —— 不是直接把 context 当参数传。
  */
-export type RouteHandlerArgs<TCtx> = { context: TCtx };
+export type RouteHandlerArgs<TCtx> = { context: TCtx; request: Request };
 
 export type HandlerOptions = JsonInit & {
   /** 成功时的状态码，默认 200 */
@@ -39,7 +39,7 @@ const INTERNAL_ERROR = domainError('INTERNAL_UNEXPECTED', 'Internal error');
  *
  * ```ts
  * const getComments = createHandler<SiteContext, CommentPage, CommentError>(
- *   async (ctx) => CommentService.list(ctx, query),
+ *   async (ctx, request) => CommentService.list(ctx, readQuery(request)),
  *   { operation: 'comments.list' },
  * );
  *
@@ -49,12 +49,12 @@ const INTERNAL_ERROR = domainError('INTERNAL_UNEXPECTED', 'Internal error');
  * ```
  */
 export function createHandler<TCtx extends HandlerBaseContext, TData, TError extends DomainError>(
-  fn: (context: TCtx) => Promise<Result<TData, TError>>,
+  fn: (context: TCtx, request: Request) => Promise<Result<TData, TError>>,
   options: HandlerOptions = {},
 ): (args: RouteHandlerArgs<TCtx>) => Promise<Response> {
-  return async ({ context }): Promise<Response> => {
+  return async ({ context, request }): Promise<Response> => {
     try {
-      const result = await fn(context);
+      const result = await fn(context, request);
 
       if (result.error) {
         // 业务失败是**预期**的，按 warn 记录即可，不打堆栈
