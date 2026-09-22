@@ -5,6 +5,7 @@
  * sites / threads / comments / members / labels / comment_mentions /
  * admins / sessions / outbox / unsubscribes / audit_logs
  */
+export * from './admins';
 export * from './members';
 export * from './sites';
 export * from './threads';
