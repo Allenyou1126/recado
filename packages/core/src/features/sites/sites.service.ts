@@ -6,26 +6,31 @@
  * （见 .specs/development-standards.md §2.3）。
  */
 
+import { randomInt } from 'node:crypto';
+
 import type { Database, Site } from '@recado/db';
 import { err, ok, type Result } from '@recado/shared';
 
-import { findSiteByKey } from './sites.data';
+import { findSiteByKey, insertSite, updateSiteKey } from './sites.data';
 import { SiteErrors, type SiteError } from './sites.errors';
-
-/** 无来源头请求的策略（决策 Q-12） */
-export type OriginPolicy = 'strict' | 'lenient';
+import {
+  parseSiteSettings,
+  type CreateSiteInput,
+  type OriginPolicy,
+  type SiteSettings,
+} from './sites.schema';
 
 /** 来源校验结果；`raw` 是命中的来源（也可能是 null，表示无来源头） */
 export type OriginCheck = { allowed: boolean; raw: string | null };
 
-/**
- * 解析站点级 `originPolicy`。
- *
- * 默认 `strict`：未显式配置时一律拒绝无来源头请求。
- * ⚠️ 站点配置的完整 schema 在 T3.1 落地，届时这里改为读取校验后的配置。
- */
+/** 读取站点配置（已按 schema 归一化，字段缺失或写错都退回默认值） */
+export function siteSettings(site: Pick<Site, 'settings'>): SiteSettings {
+  return parseSiteSettings(site.settings);
+}
+
+/** 解析站点级 `originPolicy`；默认 `strict`（决策 Q-12） */
 export function originPolicyOf(settings: Record<string, unknown>): OriginPolicy {
-  return settings.originPolicy === 'lenient' ? 'lenient' : 'strict';
+  return siteSettings({ settings }).originPolicy;
 }
 
 /**
@@ -144,13 +149,14 @@ export function evaluateOrigin(
   site: Pick<Site, 'allowedOrigins' | 'settings'>,
   headers: { origin: string | null; referer: string | null },
 ): Result<OriginCheck, SiteError> {
+  const { originPolicy } = siteSettings(site);
   const headerOrigin = headers.origin?.trim();
   // `Origin: null` 是 sandbox iframe / 不透明来源的序列化结果，等同于没有来源
   const raw =
     headerOrigin && headerOrigin !== 'null' ? headerOrigin : originFromReferer(headers.referer);
 
   if (!raw) {
-    if (originPolicyOf(site.settings) === 'lenient') {
+    if (originPolicy === 'lenient') {
       return ok({ allowed: false, raw: null });
     }
     return err(SiteErrors.originMissing());
@@ -161,4 +167,86 @@ export function evaluateOrigin(
   }
 
   return ok({ allowed: true, raw });
+}
+
+/** site key 前缀 —— 让 key 在日志/配置里一眼可辨，也便于未来做格式校验 */
+export const SITE_KEY_PREFIX = 'rc_';
+
+/** site key 的随机部分长度（36 进制，24 位 ≈ 124 bit 熵） */
+export const SITE_KEY_RANDOM_LENGTH = 24;
+
+/** 用小写字母 + 数字：无需转义，粘贴进 URL、配置文件与 JS 字符串都不会出问题 */
+const SITE_KEY_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+/**
+ * 生成 site key。
+ *
+ * `crypto.randomInt` 是**均匀**取值的加密随机源；用 `Math.random()` 或
+ * 「取模范围」都会引入偏差，可枚举空间会被显著压缩。
+ *
+ * ⚠️ site key 是**公开标识，不是密钥**（见 requirements.md §7.1 威胁模型）：
+ * 它挡不住有意的服务端伪造，真正的防线是来源白名单 + 限流 + 人工审核。
+ */
+export function generateSiteKey(): string {
+  let suffix = '';
+
+  for (let index = 0; index < SITE_KEY_RANDOM_LENGTH; index += 1) {
+    suffix += SITE_KEY_ALPHABET[randomInt(SITE_KEY_ALPHABET.length)];
+  }
+
+  return `${SITE_KEY_PREFIX}${suffix}`;
+}
+
+/** 生成 site key 的重试次数：撞上唯一约束说明运气极差，换一个即可 */
+const SITE_KEY_MAX_ATTEMPTS = 5;
+
+/**
+ * 创建站点并签发 site key。
+ *
+ * 重试而不是先查后插：并发下「先查再插」仍有竞态，唯一约束才是权威判定。
+ */
+export async function createSite(
+  db: Database,
+  input: CreateSiteInput,
+): Promise<Result<Site, SiteError>> {
+  const settings = { ...parseSiteSettings({}), ...input.settings };
+
+  for (let attempt = 0; attempt < SITE_KEY_MAX_ATTEMPTS; attempt += 1) {
+    const key = generateSiteKey();
+
+    const existing = await findSiteByKey(db, key);
+    if (existing) continue;
+
+    const site = await insertSite(db, {
+      key,
+      name: input.name,
+      allowedOrigins: input.allowedOrigins,
+      settings,
+    });
+
+    return ok(site);
+  }
+
+  return err(SiteErrors.keyGenerationFailed());
+}
+
+/**
+ * 轮换 site key：旧 key 立即失效（M1「一键轮换」）。
+ *
+ * 刻意不做「新旧并行有效期」——那会让「轮换」变成「再加一个 key」，
+ * 站点失去明确的失效语义。
+ */
+export async function rotateSiteKey(
+  db: Database,
+  siteId: string,
+): Promise<Result<Site, SiteError>> {
+  for (let attempt = 0; attempt < SITE_KEY_MAX_ATTEMPTS; attempt += 1) {
+    const updated = await updateSiteKey(db, siteId, generateSiteKey());
+
+    if (updated) return ok(updated);
+    // 更新未命中说明站点不存在，重试没有意义
+    return err(SiteErrors.notFound(siteId));
+  }
+
+  return err(SiteErrors.keyGenerationFailed());
 }

@@ -47,6 +47,7 @@ import remarkRehype from 'remark-rehype';
 import type { HighlighterCore } from 'shiki/core';
 import { unified } from 'unified';
 
+import type { SiteSettings } from '../sites/sites.schema';
 import { resolveEmojiMap, rehypeEmoji } from './emoji';
 import { CODE_THEME, getHighlighter, normalizeCodeLanguageNames } from './highlighter';
 import { rehypeExternalLinks } from './links';
@@ -178,31 +179,17 @@ export function buildProcessor(
 /**
  * 从站点配置里读出渲染选项。
  *
- * ⚠️ 站点配置的完整 schema 在 T3.1 落地，这里先做**防御式读取**：
- * 配置缺字段、类型不对时退回默认值，而不是让一条配置写错就把评论区打挂。
+ * 站点配置已由 `parseSiteSettings` 归一化（字段缺失或写错都退回默认值），
+ * 因此这里可以直接取用，不必再做防御式判断。
  */
-export function renderOptionsFromSettings(settings: Record<string, unknown>): RenderOptionsInput {
-  const markdown = settings['markdown'];
-  const gfm =
-    typeof markdown === 'object' && markdown !== null
-      ? (markdown as { gfm?: unknown }).gfm
-      : undefined;
-
-  const emojis = settings['emojis'];
-
+export function renderOptionsFromSettings(settings: SiteSettings): RenderOptionsInput {
   return {
-    gfm: typeof gfm === 'boolean' ? gfm : undefined,
-    codeHighlight:
-      typeof settings['codeHighlight'] === 'boolean' ? settings['codeHighlight'] : undefined,
-    math: typeof settings['math'] === 'boolean' ? settings['math'] : undefined,
-    linkNofollow:
-      typeof settings['linkNofollow'] === 'boolean' ? settings['linkNofollow'] : undefined,
-    emojis:
-      typeof emojis === 'object' && emojis !== null
-        ? (emojis as Record<string, string>)
-        : undefined,
-    maxContentBytes:
-      typeof settings['maxContentBytes'] === 'number' ? settings['maxContentBytes'] : undefined,
+    gfm: settings.markdown.gfm,
+    codeHighlight: settings.codeHighlight,
+    math: settings.math,
+    linkNofollow: settings.linkNofollow,
+    emojis: settings.emojis,
+    maxContentBytes: settings.maxContentBytes,
   };
 }
 

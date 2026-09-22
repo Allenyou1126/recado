@@ -15,7 +15,8 @@ export type SiteError =
   | DomainError<'VALIDATION_SITE_KEY_REQUIRED'>
   | DomainError<'FORBIDDEN_SITE_DISABLED'>
   | DomainError<'FORBIDDEN_ORIGIN_MISSING'>
-  | DomainError<'FORBIDDEN_ORIGIN_NOT_ALLOWED'>;
+  | DomainError<'FORBIDDEN_ORIGIN_NOT_ALLOWED'>
+  | DomainError<'INTERNAL_SITE_KEY_GENERATION_FAILED'>;
 
 export const SiteErrors = {
   notFound: (id: string) => domainError('NOT_FOUND_SITE', 'Site not found', { id }),
@@ -42,4 +43,8 @@ export const SiteErrors = {
 
   originNotAllowed: (origin: string) =>
     domainError('FORBIDDEN_ORIGIN_NOT_ALLOWED', 'Origin is not in the site allow-list', { origin }),
+
+  /** 连续多次撞上 site key 唯一约束；概率极低，出现即说明随机源或库有问题 */
+  keyGenerationFailed: () =>
+    domainError('INTERNAL_SITE_KEY_GENERATION_FAILED', 'Could not generate a unique site key'),
 } as const;

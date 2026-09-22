@@ -27,4 +27,5 @@ export * from './features/rendering/rendering.errors';
 export * from './features/rendering/rendering.schema';
 export * from './features/rendering/rendering.service';
 export * from './features/sites/sites.errors';
+export * from './features/sites/sites.schema';
 export * from './features/sites/sites.service';

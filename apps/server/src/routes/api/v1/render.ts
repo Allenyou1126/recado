@@ -1,4 +1,9 @@
-import { renderMarkdown, renderOptionsFromSettings, type RenderError } from '@recado/core';
+import {
+  renderMarkdown,
+  renderOptionsFromSettings,
+  siteSettings,
+  type RenderError,
+} from '@recado/core';
 import { err, ok, RenderRequestSchema, type RenderRequest } from '@recado/shared';
 import { createFileRoute } from '@tanstack/react-router';
 
@@ -37,7 +42,7 @@ const previewRender = createHandler<SiteContext, RenderPreview, RenderRouteError
 
     const rendered = await renderMarkdown(
       body.data.content,
-      renderOptionsFromSettings(context.site.settings),
+      renderOptionsFromSettings(siteSettings(context.site)),
     );
 
     if (rendered.error) {
