@@ -1,13 +1,9 @@
 import { ok } from '@recado/shared';
 import { createFileRoute } from '@tanstack/react-router';
 
+import { PUBLIC_API_MIDDLEWARE } from '../../../lib/http/api-route';
 import { createHandler } from '../../../lib/http/handler';
 import { methodNotAllowed } from '../../../lib/http/method-not-allowed';
-import { baseMiddleware } from '../../../lib/middleware/base';
-import { corsMiddleware } from '../../../lib/middleware/cors';
-import { dbMiddleware } from '../../../lib/middleware/db';
-import { originMiddleware } from '../../../lib/middleware/origin';
-import { siteMiddleware } from '../../../lib/middleware/site';
 
 /**
  * 示例受保护路由 —— 阶段 0 用来验证整条中间件链：
@@ -42,8 +38,7 @@ const getSite = createHandler<SiteContext, PublicSite, never>(
 export const Route = createFileRoute('/api/v1/site')({
   server: {
     // 顺序即执行顺序：env → db → site → origin
-    // 顺序即执行顺序：env → db → site → cors → origin
-    middleware: [baseMiddleware, dbMiddleware, siteMiddleware, corsMiddleware, originMiddleware],
+    middleware: [...PUBLIC_API_MIDDLEWARE],
     handlers: {
       GET: getSite,
 

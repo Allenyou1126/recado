@@ -161,6 +161,40 @@ describe('实际跨域请求（生产构建）', () => {
 });
 
 describe('错误方法与错误信封（生产构建）', () => {
+  /**
+   * 公开端点清单 × 未声明的方法。
+   *
+   * 「未匹配的方法返回 200 text/html（SSR 外壳）」这个框架行为很容易在新增路由时复发，
+   * 因此用表格逐个端点断言，而不是只测一条。
+   */
+  const METHOD_MATRIX: ReadonlyArray<{
+    path: string;
+    method: string;
+    allow: string;
+  }> = [
+    { path: '/api/v1/site', method: 'PUT', allow: 'GET, HEAD, OPTIONS' },
+    { path: '/api/v1/site', method: 'DELETE', allow: 'GET, HEAD, OPTIONS' },
+    { path: '/api/v1/site', method: 'POST', allow: 'GET, HEAD, OPTIONS' },
+    { path: '/api/v1/render', method: 'GET', allow: 'POST, OPTIONS' },
+    { path: '/api/v1/render', method: 'DELETE', allow: 'POST, OPTIONS' },
+    { path: '/api/v1/health', method: 'POST', allow: 'GET, HEAD, OPTIONS' },
+    { path: '/api/v1/health', method: 'PUT', allow: 'GET, HEAD, OPTIONS' },
+  ];
+
+  it.each(METHOD_MATRIX)(
+    '$method $path 返回 405 + Allow（而不是 200 text/html）',
+    async ({ path, method, allow }) => {
+      const response = await fetch(url(path), {
+        method,
+        headers: { 'X-Recado-Site': siteKey, Origin: ALLOWED_ORIGIN },
+      });
+
+      expect(response.status).toBe(405);
+      expect(response.headers.get('allow')).toBe(allow);
+      expect(response.headers.get('content-type') ?? '').not.toContain('text/html');
+    },
+  );
+
   it('对只读端点发 PUT 返回 405 + Allow，而不是 200 text/html', async () => {
     const response = await fetch(url('/api/v1/site'), {
       method: 'PUT',

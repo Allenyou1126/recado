@@ -7,14 +7,10 @@ import {
 import { err, ok, RenderRequestSchema, type RenderRequest } from '@recado/shared';
 import { createFileRoute } from '@tanstack/react-router';
 
+import { PUBLIC_API_MIDDLEWARE } from '../../../lib/http/api-route';
 import { createHandler } from '../../../lib/http/handler';
 import { methodNotAllowed } from '../../../lib/http/method-not-allowed';
 import { readJsonBody, type RequestBodyError } from '../../../lib/http/request';
-import { baseMiddleware } from '../../../lib/middleware/base';
-import { corsMiddleware } from '../../../lib/middleware/cors';
-import { dbMiddleware } from '../../../lib/middleware/db';
-import { originMiddleware } from '../../../lib/middleware/origin';
-import { siteMiddleware } from '../../../lib/middleware/site';
 
 /**
  * 预览渲染：`POST /api/v1/render`。
@@ -58,8 +54,7 @@ const previewRender = createHandler<SiteContext, RenderPreview, RenderRouteError
 
 export const Route = createFileRoute('/api/v1/render')({
   server: {
-    // 顺序即执行顺序：env → db → site → cors → origin
-    middleware: [baseMiddleware, dbMiddleware, siteMiddleware, corsMiddleware, originMiddleware],
+    middleware: [...PUBLIC_API_MIDDLEWARE],
     handlers: {
       POST: previewRender,
 
