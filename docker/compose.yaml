@@ -63,5 +63,20 @@ services:
       retries: 6
       start_period: 20s
 
+  migrate:
+    # 一次性任务：docker compose -f docker/compose.yaml run --rm migrate
+    # 刻意不放进 app 的启动流程 —— 迁移失败不应污染启动，见 requirements.md §8.5
+    profiles: ['tools']
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: tools
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-recado}:${POSTGRES_PASSWORD:-recado}@postgres:5432/${POSTGRES_DB:-recado}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
 volumes:
   postgres-data:

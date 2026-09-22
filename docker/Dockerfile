@@ -26,6 +26,14 @@ COPY . .
 RUN pnpm install --frozen-lockfile --ignore-scripts \
   && pnpm build
 
+# ---------- 迁移工具层 ----------
+# 迁移是**独立部署步骤**，不挂在应用启动流程里：compose 的 migrate 服务用这个 stage
+# 跑一次性任务（docker compose run --rm migrate），跑完即退。
+# 这里直接复用 build 层，因为它同时具备源码、迁移文件与 devDependencies。
+FROM build AS tools
+
+CMD ["pnpm", "--filter", "@recado/db", "migrate"]
+
 # ---------- 运行层 ----------
 FROM base AS runtime
 ENV NODE_ENV=production

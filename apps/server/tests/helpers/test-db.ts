@@ -11,9 +11,11 @@
  * 连接串可用 `TEST_DATABASE_URL` 覆盖，默认对齐 compose 里的端口映射。
  */
 
-import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import { createDbClient, type DbClient, type Database } from '@recado/db';
+import { sql } from 'drizzle-orm';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 
 export const TEST_DATABASE_URL =
@@ -60,17 +62,22 @@ async function ensureDatabaseExists(): Promise<void> {
 }
 
 /**
- * 把 schema 同步到测试库。
+ * 执行迁移。
  *
- * ⚠️ 阶段 0 还没有迁移文件（T1.10 生成），因此先用 `drizzle-kit push` 同步结构；
- * T1.11 之后这里应改为执行迁移，让测试库与生产迁移路径完全一致。
+ * 测试库与生产走**同一条**迁移路径：不走 `drizzle-kit push`，否则测试库的结构
+ * 可能与迁移产物不一致，集成测试就失去了说服力。
+ *
+ * ⚠️ 因此 `recado_test` 是由迁移管理的库，不要手工往里 push 结构。
  */
-function pushSchema(): void {
-  execFileSync('pnpm', ['--filter', '@recado/db', 'exec', 'drizzle-kit', 'push', '--force'], {
-    cwd: new URL('../../../../', import.meta.url).pathname,
-    env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
-    stdio: 'pipe',
-  });
+async function runMigrations(): Promise<void> {
+  const client = createDbClient(TEST_DATABASE_URL);
+  try {
+    await migrate(client.db, {
+      migrationsFolder: fileURLToPath(new URL('../../../../packages/db/drizzle', import.meta.url)),
+    });
+  } finally {
+    await client.close();
+  }
 }
 
 let ready: Promise<void> | undefined;
@@ -80,7 +87,7 @@ export function ensureTestDatabase(): Promise<void> {
   ready ??= (async () => {
     await ensureDatabaseExists();
     await ensureExtensions(TEST_DATABASE_URL);
-    pushSchema();
+    await runMigrations();
   })();
 
   return ready;
@@ -98,5 +105,5 @@ export function openTestDatabase(): DbClient {
  * 新增业务表时记得加进来 —— 漏掉会让测试互相污染。
  */
 export async function resetSites(db: Database): Promise<void> {
-  await db.execute('TRUNCATE TABLE sites CASCADE');
+  await db.execute(sql`TRUNCATE TABLE sites CASCADE`);
 }
