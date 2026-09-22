@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@recado/shared": "workspace:*"
+    "@recado/shared": "workspace:*",
+    "zod": "4.6.5"
   }
 }
