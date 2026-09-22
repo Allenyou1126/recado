@@ -5,7 +5,7 @@
 | 版本 | v1.0 |
 | 范围 | 需求主文档 §9「里程碑 1 — 可用内核」的全部 P0 项 |
 | 配套 | `requirements.md`（要做什么）、`decision-log.md`（为什么）、`development-standards.md`（怎么写） |
-| 状态 | 🔄 进行中（阶段 0–7 已完成） |
+| 状态 | 🔄 进行中（阶段 0–8 已完成） |
 
 ---
 
@@ -55,6 +55,8 @@
   幂等入队、SKIP LOCKED worker、外部 drain 端点、退订
 - ✅ 阶段 7 OIDC 认证与会话（见 §4）：标准 OIDC + PKCE、角色映射、服务端会话、
   actor/siteScope/CSRF 中间件、auth:diagnose CLI
+- ✅ 阶段 8 管理台（见 §4）：_authed 布局、概览、评论管理（筛选/批量/部分失败明细）、
+  成员与标签、站点与 key 轮换、邮件与发信测试、审计日志、来源自检、交互规范
 
 ### 未完成
 
@@ -148,7 +150,7 @@
 - [x] 阶段 5 · 审核、声誉与审计
 - [x] 阶段 6 · 邮件通知与 outbox worker
 - [x] 阶段 7 · OIDC 认证与会话
-- [ ] 阶段 8 · 管理台
+- [x] 阶段 8 · 管理台
 - [ ] 阶段 9 · SDK、OpenAPI 与部署文档
 
 ---
@@ -477,10 +479,11 @@
 
 ### 验收
 
-- [ ] 全流程可**仅用键盘**完成一次评论审核
-- [ ] 批量删除前显示「将删除 N 条评论」
-- [ ] 站点切换后所有列表数据正确刷新（queryKey 含 `siteId`）
-- [ ] 无 hydration mismatch（时间等不确定内容用 `<ClientOnly>` 包裹）
+- [x] 全流程可**仅用键盘**完成一次评论审核
+      （原生 button/checkbox/select + `<dialog>` 自带焦点陷阱与 Esc）
+- [x] 批量删除前显示「将删除 N 条评论」
+- [x] 站点切换后所有列表数据正确刷新（queryKey 含 `siteId`）
+- [x] 无 hydration mismatch：时间统一用 ISO 字符串裁剪展示，不调用 `Date.now()` 渲染
 
 ### 已知坑
 
