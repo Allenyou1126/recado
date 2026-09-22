@@ -21,7 +21,22 @@ export default defineConfig({
       importProtection: {
         behavior: { dev: 'mock', build: 'error' },
         client: {
-          specifiers: ['pg', 'drizzle-orm', 'nodemailer', '@recado/db'],
+          specifiers: [
+            'pg',
+            'drizzle-orm',
+            'nodemailer',
+            '@recado/db',
+            // 渲染管线是服务端专用：客户端不得拥有独立的 Markdown 渲染器
+            'unified',
+            'remark-parse',
+            'remark-gfm',
+            'remark-rehype',
+            'rehype-sanitize',
+            'rehype-stringify',
+            'rehype-mathjax',
+            'shiki',
+            '@shikijs/rehype',
+          ],
           files: ['**/*.server.ts', '**/*.server.tsx'],
         },
       },

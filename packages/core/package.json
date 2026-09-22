@@ -14,7 +14,20 @@
   "dependencies": {
     "@recado/db": "workspace:*",
     "@recado/shared": "workspace:*",
-    "drizzle-orm": "0.45.3"
+    "@shikijs/rehype": "4.4.3",
+    "drizzle-orm": "0.45.3",
+    "hast-util-to-string": "3.0.1",
+    "rehype-mathjax": "7.1.0",
+    "rehype-sanitize": "6.0.0",
+    "rehype-stringify": "10.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
+    "remark-parse": "11.0.0",
+    "remark-rehype": "11.1.2",
+    "shiki": "4.4.3",
+    "unified": "11.0.5",
+    "unist-util-visit": "5.1.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "vitest": "5.0.1"
