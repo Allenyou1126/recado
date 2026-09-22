@@ -10,5 +10,6 @@ export * from './comment-mentions';
 export * from './comments';
 export * from './labels';
 export * from './members';
+export * from './outbox';
 export * from './sites';
 export * from './threads';
