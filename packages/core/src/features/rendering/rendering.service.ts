@@ -32,6 +32,7 @@ import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
+import type { BuiltinLanguage } from 'shiki';
 import { unified } from 'unified';
 
 import { RenderErrors, type RenderError } from './rendering.errors';
@@ -51,7 +52,7 @@ import {
 export const CODE_THEME = 'github-light';
 
 /** 语言包按需加载的初始集合：一个都不预加载（需求 Q-09：否则构建产物会明显膨胀） */
-const PRELOADED_LANGUAGES: string[] = [];
+const PRELOADED_LANGUAGES: BuiltinLanguage[] = [];
 
 /** shiki 用于「无高亮纯文本」的内置特殊语言 */
 const PLAIN_TEXT = 'text';
