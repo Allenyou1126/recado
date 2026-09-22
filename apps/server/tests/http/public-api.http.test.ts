@@ -172,9 +172,9 @@ describe('错误方法与错误信封（生产构建）', () => {
     method: string;
     allow: string;
   }> = [
-    { path: '/api/v1/site', method: 'PUT', allow: 'GET, HEAD, OPTIONS' },
-    { path: '/api/v1/site', method: 'DELETE', allow: 'GET, HEAD, OPTIONS' },
-    { path: '/api/v1/site', method: 'POST', allow: 'GET, HEAD, OPTIONS' },
+    { path: '/api/v1/config', method: 'PUT', allow: 'GET, HEAD, OPTIONS' },
+    { path: '/api/v1/config', method: 'DELETE', allow: 'GET, HEAD, OPTIONS' },
+    { path: '/api/v1/config', method: 'POST', allow: 'GET, HEAD, OPTIONS' },
     { path: '/api/v1/render', method: 'GET', allow: 'POST, OPTIONS' },
     { path: '/api/v1/render', method: 'DELETE', allow: 'POST, OPTIONS' },
     { path: '/api/v1/health', method: 'POST', allow: 'GET, HEAD, OPTIONS' },
@@ -196,7 +196,7 @@ describe('错误方法与错误信封（生产构建）', () => {
   );
 
   it('对只读端点发 PUT 返回 405 + Allow，而不是 200 text/html', async () => {
-    const response = await fetch(url('/api/v1/site'), {
+    const response = await fetch(url('/api/v1/config'), {
       method: 'PUT',
       headers: { 'X-Recado-Site': siteKey, Origin: ALLOWED_ORIGIN },
     });
@@ -218,7 +218,7 @@ describe('错误方法与错误信封（生产构建）', () => {
   });
 
   it('缺 site key 返回 400 + 统一错误信封', async () => {
-    const response = await fetch(url('/api/v1/site'), { headers: { Origin: ALLOWED_ORIGIN } });
+    const response = await fetch(url('/api/v1/config'), { headers: { Origin: ALLOWED_ORIGIN } });
     const body = await response.json();
 
     expect(response.status).toBe(400);
@@ -228,7 +228,7 @@ describe('错误方法与错误信封（生产构建）', () => {
   });
 
   it('未知 site key 返回 404 且不回显 key', async () => {
-    const response = await fetch(url('/api/v1/site'), {
+    const response = await fetch(url('/api/v1/config'), {
       headers: { 'X-Recado-Site': 'rc_nope', Origin: ALLOWED_ORIGIN },
     });
     const body = await response.json();
@@ -245,5 +245,68 @@ describe('错误方法与错误信封（生产构建）', () => {
     expect(ok.status).toBe(200);
     expect(wrongMethod.status).toBe(405);
     expect(wrongMethod.headers.get('allow')).toBe('GET, HEAD, OPTIONS');
+  });
+});
+
+describe('GET /api/v1/config（生产构建）', () => {
+  it('返回渲染评论区所需的公开配置', async () => {
+    const response = await fetch(url('/api/v1/config'), {
+      headers: { 'X-Recado-Site': siteKey, Origin: ALLOWED_ORIGIN },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.site.name).toBe('生产 HTTP 测试站');
+    expect(body.data.site.id).toMatch(/^[0-9a-f-]{36}$/);
+
+    expect(body.data.comment).toMatchObject({
+      maxDepth: 2,
+      maxContentBytes: 10_240,
+      requireNickname: true,
+      requireEmail: true,
+      pageSize: 20,
+      maxPageSize: 50,
+      repliesPreview: 3,
+      sortOptions: ['latest', 'oldest'],
+    });
+
+    expect(body.data.rendering).toMatchObject({
+      codeHighlight: true,
+      math: true,
+      linkNofollow: true,
+    });
+
+    // 内置表情包已合并进来
+    expect(Object.keys(body.data.emojis).length).toBeGreaterThan(10);
+    expect(body.data.emojis.smile).toContain('twemoji');
+    expect(body.data.avatarBaseUrl).toContain('gravatar');
+  });
+
+  it('不泄漏任何内部配置（notifyEmails / smtp / 审核与限流参数）', async () => {
+    const response = await fetch(url('/api/v1/config'), {
+      headers: { 'X-Recado-Site': siteKey, Origin: ALLOWED_ORIGIN },
+    });
+    const raw = await response.text();
+
+    for (const leaked of [
+      'notifyEmails',
+      'smtp',
+      'auditMode',
+      'spamThreshold',
+      'minIntervalSeconds',
+      'originPolicy',
+      'allowedOrigins',
+      '"key"',
+    ]) {
+      expect(raw, `响应里出现了内部配置：${leaked}`).not.toContain(leaked);
+    }
+  });
+
+  it('未知 site key 拿不到配置', async () => {
+    const response = await fetch(url('/api/v1/config'), {
+      headers: { 'X-Recado-Site': 'rc_unknown', Origin: ALLOWED_ORIGIN },
+    });
+
+    expect(response.status).toBe(404);
   });
 });

@@ -12,6 +12,7 @@ import {
   matchesAllowedOrigin,
   normalizeAllowedOrigins,
   originPolicyOf,
+  toPublicSiteConfig,
 } from './sites.service';
 
 const site = (allowedOrigins: string[], settings: Record<string, unknown> = {}) => ({
@@ -175,5 +176,63 @@ describe('normalizeAllowedOrigins', () => {
 
   it('保留带协议与端口的写法', () => {
     expect(normalizeAllowedOrigins(['http://localhost:3000'])).toEqual(['http://localhost:3000']);
+  });
+});
+
+describe('toPublicSiteConfig', () => {
+  const site = {
+    id: '11111111-1111-1111-1111-111111111111',
+    name: '我的博客',
+    settings: {
+      maxDepth: 3,
+      maxContentBytes: 4096,
+      requireNickname: false,
+      notifyEmails: ['owner@example.com'],
+      smtp: { host: 'smtp.example.com', port: 587, fromEmail: 'noreply@example.com' },
+      auditMode: 'all',
+      spamThreshold: 2,
+    },
+  };
+
+  it('输出渲染评论区所需的字段', () => {
+    const config = toPublicSiteConfig(site, { smile: 'https://cdn.example.com/smile.svg' });
+
+    expect(config.site).toEqual({ id: site.id, name: '我的博客' });
+    expect(config.comment).toEqual({
+      maxDepth: 3,
+      maxContentBytes: 4096,
+      requireNickname: false,
+      requireEmail: true,
+      pageSize: 20,
+      maxPageSize: 50,
+      repliesPreview: 3,
+      sortOptions: ['latest', 'oldest'],
+    });
+    expect(config.emojis).toEqual({ smile: 'https://cdn.example.com/smile.svg' });
+  });
+
+  it('绝不带出内部配置（邮箱、SMTP、审核与反垃圾参数）', () => {
+    const serialized = JSON.stringify(toPublicSiteConfig(site, {}));
+
+    for (const internal of [
+      'notifyEmails',
+      'smtp',
+      'auditMode',
+      'spamThreshold',
+      'minIntervalSeconds',
+      'originPolicy',
+      'owner@example.com',
+    ]) {
+      expect(serialized).not.toContain(internal);
+    }
+  });
+
+  it('邮箱必填恒为 true，站点改不了（决策 D18）', () => {
+    const config = toPublicSiteConfig(
+      { ...site, settings: { ...site.settings, requireEmail: false } },
+      {},
+    );
+
+    expect(config.comment.requireEmail).toBe(true);
   });
 });

@@ -9,7 +9,7 @@
 import { randomInt } from 'node:crypto';
 
 import type { Database, Site } from '@recado/db';
-import { err, ok, type Result } from '@recado/shared';
+import { err, ok, type PublicSiteConfig, type Result } from '@recado/shared';
 
 import { findSiteByKey, insertSite, updateSiteKey } from './sites.data';
 import { SiteErrors, type SiteError } from './sites.errors';
@@ -190,6 +190,44 @@ export function evaluateOrigin(
   }
 
   return ok({ allowed: true, raw });
+}
+
+/**
+ * 构造站点公开配置。
+ *
+ * **显式构造，绝不透传数据库行**：settings 里同时住着 `notifyEmails`、`smtp`
+ * 这类内部配置，透传等于把「以后新增的敏感字段」自动暴露出去
+ * （见 .specs/development-standards.md §8.1）。
+ *
+ * @param emojis 已与内置表情包合并的结果，由调用方注入以避免 core 内部的循环依赖
+ */
+export function toPublicSiteConfig(
+  site: Pick<Site, 'id' | 'name' | 'settings'>,
+  emojis: Record<string, string>,
+): PublicSiteConfig {
+  const settings = siteSettings(site);
+
+  return {
+    site: { id: site.id, name: site.name },
+    comment: {
+      maxDepth: settings.maxDepth,
+      maxContentBytes: settings.maxContentBytes,
+      requireNickname: settings.requireNickname,
+      // 决策 D18：邮箱恒为必填，站点不可关
+      requireEmail: true,
+      pageSize: settings.pageSize,
+      maxPageSize: settings.maxPageSize,
+      repliesPreview: settings.repliesPreview,
+      sortOptions: ['latest', 'oldest'],
+    },
+    rendering: {
+      codeHighlight: settings.codeHighlight,
+      math: settings.math,
+      linkNofollow: settings.linkNofollow,
+    },
+    emojis,
+    avatarBaseUrl: settings.avatarBaseUrl,
+  };
 }
 
 /** site key 前缀 —— 让 key 在日志/配置里一眼可辨，也便于未来做格式校验 */
