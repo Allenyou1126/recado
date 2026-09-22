@@ -4,6 +4,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { createHandler } from '../../../lib/http/handler';
 import { methodNotAllowed } from '../../../lib/http/method-not-allowed';
 import { baseMiddleware } from '../../../lib/middleware/base';
+import { corsMiddleware } from '../../../lib/middleware/cors';
 import { dbMiddleware } from '../../../lib/middleware/db';
 import { originMiddleware } from '../../../lib/middleware/origin';
 import { siteMiddleware } from '../../../lib/middleware/site';
@@ -41,7 +42,8 @@ const getSite = createHandler<SiteContext, PublicSite, never>(
 export const Route = createFileRoute('/api/v1/site')({
   server: {
     // 顺序即执行顺序：env → db → site → origin
-    middleware: [baseMiddleware, dbMiddleware, siteMiddleware, originMiddleware],
+    // 顺序即执行顺序：env → db → site → cors → origin
+    middleware: [baseMiddleware, dbMiddleware, siteMiddleware, corsMiddleware, originMiddleware],
     handlers: {
       GET: getSite,
 
