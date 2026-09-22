@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteRouteImport } from './routes/_authed/route'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as HealthzRouteImport } from './routes/healthz'
 import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
 import { Route as ReadyzRouteImport } from './routes/readyz'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -60,6 +61,11 @@ const AuthedRouteRoute = AuthedRouteRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthzRoute = HealthzRouteImport.update({
+  id: '/healthz',
+  path: '/healthz',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
@@ -243,6 +249,7 @@ const ApiV1AdminSitesIdRotateKeyRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/healthz': typeof HealthzRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/readyz': typeof ReadyzRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
+  '/healthz': typeof HealthzRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/readyz': typeof ReadyzRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteRouteWithChildren
   '/docs': typeof DocsRoute
+  '/healthz': typeof HealthzRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/readyz': typeof ReadyzRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -364,6 +373,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/docs'
+    | '/healthz'
     | '/openapi.json'
     | '/readyz'
     | '/auth/callback'
@@ -403,6 +413,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/docs'
+    | '/healthz'
     | '/openapi.json'
     | '/readyz'
     | '/auth/callback'
@@ -443,6 +454,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authed'
     | '/docs'
+    | '/healthz'
     | '/openapi.json'
     | '/readyz'
     | '/auth/callback'
@@ -484,6 +496,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRouteRoute: typeof AuthedRouteRouteWithChildren
   DocsRoute: typeof DocsRoute
+  HealthzRoute: typeof HealthzRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   ReadyzRoute: typeof ReadyzRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -533,6 +546,13 @@ declare module '@tanstack/react-router' {
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/healthz': {
+      id: '/healthz'
+      path: '/healthz'
+      fullPath: '/healthz'
+      preLoaderRoute: typeof HealthzRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/openapi.json': {
@@ -833,6 +853,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRouteRoute: AuthedRouteRouteWithChildren,
   DocsRoute: DocsRoute,
+  HealthzRoute: HealthzRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   ReadyzRoute: ReadyzRoute,
   AuthCallbackRoute: AuthCallbackRoute,

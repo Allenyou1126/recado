@@ -162,6 +162,15 @@ export function buildOpenApiDocument(): JsonSchema {
           responses: { 200: { description: '进程存活' } },
         },
       },
+      '/healthz': {
+        get: {
+          summary: '存活探针',
+          description:
+            '不查数据库：数据库不可用时仍返回 200，避免编排系统误杀进程。与 `/api/v1/health` 等价。',
+          tags: ['运维'],
+          responses: { 200: { description: '进程存活' } },
+        },
+      },
       '/readyz': {
         get: {
           summary: '就绪探针',

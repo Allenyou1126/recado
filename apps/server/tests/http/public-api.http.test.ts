@@ -756,6 +756,14 @@ describe('探针（T9.6）', () => {
     expect(response.status).toBe(200);
   });
 
+  it('/healthz 与 /api/v1/health 等价（两条路径都保留）', async () => {
+    const legacy = await fetch(url('/api/v1/health'));
+    const canonical = await fetch(url('/healthz'));
+
+    expect(canonical.status).toBe(200);
+    expect(await canonical.json()).toEqual(await legacy.json());
+  });
+
   it('/readyz 在数据库可用时返回 200', async () => {
     const response = await fetch(url('/readyz'));
     const body = await response.json();
@@ -808,6 +816,7 @@ describe('OpenAPI 文档（T9.1）', () => {
       '/api/v1/config',
       '/api/v1/health',
       '/api/v1/render',
+      '/healthz',
       '/api/v1/threads/{path}',
       '/api/v1/unsubscribe',
       '/internal/outbox/drain',
