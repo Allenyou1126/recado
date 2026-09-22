@@ -544,7 +544,7 @@
 标记方式：✅ 已实测通过（附验证方式）；📌 由自动化测试覆盖；📄 由文档交付。
 
 - [x] 全新环境 `docker compose up` 后应用与数据库正常启动，`/readyz` 返回 200
-      （✅ 实测：两个容器均 healthy，`/readyz` 与 `/healthz` 均 200）
+      （✅ 实测：两个容器均 healthy，`/readyz`、`/healthz`、`/api/v1/health` 均 200）
 - [x] 在 ZITADEL 中创建并授予 `PREFIX.OWNER` 角色后可登录管理台；无角色用户被拒绝且不产生会话
       （📌 auth 集成测试覆盖「无匹配角色 → 不建会话、不写 admins 行」；
       📄 docs/deployment.md 第 0 步与第 5 步给出 IdP 侧配置与 `auth:diagnose` 排障命令）
@@ -578,7 +578,7 @@
 - [x] OpenAPI 文档与实际 API 完全一致
       （📌 测试逐项比对「文档路径集合 == 实现路由集合」）
 - [x] 核心领域逻辑单元测试与 API 集成测试通过
-      （✅ 356 项测试：core 138、server 201、sdk 12、db 5）
+      （✅ 357 项测试：core 138、server 202、sdk 12、db 5）
 - [x] 部署指南、OIDC（ZITADEL）接入指南、API 文档齐备
       （📄 docs/deployment.md 覆盖部署、ZITADEL 接入、SPF/DKIM/DMARC、威胁模型与排障；
       📄 `/docs` 提供可交互 API 文档）
