@@ -1,0 +1,40 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建产物
+dist/
+build/
+.output/
+.nitro/
+.tanstack/
+.vite/
+*.tsbuildinfo
+
+# 环境变量（示例文件除外）
+.env
+.env.*
+!.env.example
+
+# 日志
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# 测试与覆盖率
+coverage/
+playwright-report/
+test-results/
+
+# 编辑器与系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# 临时文件
+.tmp/
+.cache/

@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# Recado commit-msg 校验钩子
+#
+# 规则来源：AGENTS.md「提交规范」、.specs/development-standards.md §12
+#
+# 校验四项：
+#   1. Conventional Commits 格式：<type>(<scope>)!: <描述>
+#   2. scope 取自白名单
+#   3. 标题长度 ≤ 100 字符
+#   4. 必须包含 Assisted-By 尾注，标明所用 Agent 工具与模型
+#
+# 临时绕过：git commit --no-verify（请在 PR 说明理由；不要养成习惯）
+
+msg_file="${1:-}"
+if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
+  echo "commit-msg: 缺少提交信息文件参数" >&2
+  exit 1
+fi
+
+VALID_TYPES='feat|fix|refactor|docs|test|chore|perf|build|ci|style|revert'
+VALID_SCOPES='comments|threads|sites|members|labels|moderation|notifications|rendering|auth|db|api|sdk|admin|docker|ci|deps|docs|specs|hooks|repo'
+MAX_SUBJECT_LEN=100
+
+fail() {
+  printf '\n\033[31m✖ 提交信息不合规，已拒绝提交\033[0m\n\n%s\n\n' "$1" >&2
+  printf '\033[2m规则见 AGENTS.md「提交规范」。确需绕过：git commit --no-verify\033[0m\n\n' >&2
+  exit 1
+}
+
+# 标题 = 去掉注释行与空行后的第一行
+subject=$(grep -vE '^[[:space:]]*#' "$msg_file" | sed '/^[[:space:]]*$/d' | head -n1)
+
+# 自动生成的提交放行
+case "$subject" in
+  Merge* | Revert* | fixup!* | squash!*) exit 0 ;;
+esac
+
+# ---------- 1. Conventional Commits ----------
+if ! printf '%s' "$subject" | grep -qE "^(${VALID_TYPES})(\([a-z0-9-]+\))?!?: .+"; then
+  fail "$(printf '标题必须符合 Conventional Commits 格式：\n\n    <type>(<scope>): <描述>\n\n  可用 type：%s\n  scope 可省略；若填写须取自 AGENTS.md 中的白名单。\n\n  当前标题：%s' "${VALID_TYPES//|/ }" "$subject")"
+fi
+
+# ---------- 2. scope 白名单 ----------
+scope=$(printf '%s' "$subject" | sed -nE 's/^[a-z]+\(([a-z0-9-]+)\).*/\1/p')
+if [ -n "$scope" ] && ! printf '%s' "$scope" | grep -qE "^(${VALID_SCOPES})$"; then
+  fail "$(printf '未知的 scope：%s\n\n  可用 scope：%s\n\n  若确需新增，请同时更新本钩子白名单与 AGENTS.md。' "$scope" "${VALID_SCOPES//|/ }")"
+fi
+
+# ---------- 3. 标题长度 ----------
+len=${#subject}
+if [ "$len" -gt "$MAX_SUBJECT_LEN" ]; then
+  fail "标题过长（${len} 字符，上限 ${MAX_SUBJECT_LEN}）。请把细节移到正文。"
+fi
+
+# ---------- 4. Assisted-By 尾注 ----------
+trailers=$(git interpret-trailers --parse "$msg_file" 2>/dev/null || true)
+assisted=$(printf '%s\n' "$trailers" | grep -iE '^assisted-by:[[:space:]]*' || true)
+
+# 回退：尾注前漏写空行时 git 不会把它当作尾注块，
+# 这里按行扫描兜底，避免因格式细节给出令人困惑的「缺少尾注」报错。
+if [ -z "$assisted" ]; then
+  assisted=$(grep -iE '^assisted-by:[[:space:]]*' "$msg_file" || true)
+fi
+
+if [ -z "$assisted" ]; then
+  fail "缺少 Assisted-By 尾注。
+
+  凡由 AI Agent 参与（哪怕只参与了一部分）的提交，都必须在提交信息末尾、
+  正文之后空一行，注明所用工具与模型：
+
+      Assisted-By: <工具名> (<模型 ID>)
+
+  例如：
+
+      Assisted-By: DeepSeek Harness (deepseek-flash)
+
+  多个 Agent 协作时可写多行。
+  完全由人类完成、无任何 Agent 参与的提交，写 Assisted-By: none。"
+fi
+
+while IFS= read -r line; do
+  [ -n "$line" ] || continue
+  value=$(printf '%s' "$line" | sed -E 's/^[Aa]ssisted-[Bb]y:[[:space:]]*//')
+  case "$value" in
+    none | None | NONE) continue ;;
+  esac
+  if ! printf '%s' "$value" | grep -qE '^.+ \([^()]+\)$'; then
+    fail "Assisted-By 格式不正确：
+
+      ${value}
+
+  必须同时写明工具与模型：
+
+      Assisted-By: <工具名> (<模型 ID>)
+
+  例如：Assisted-By: DeepSeek Harness (deepseek-flash)"
+  fi
+done <<< "$assisted"
+
+exit 0
