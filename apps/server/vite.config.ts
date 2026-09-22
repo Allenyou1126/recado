@@ -29,7 +29,14 @@ export default defineConfig({
 
     viteReact(),
 
-    /** Node 常驻服务部署产物：.output/server/index.mjs（见 requirements.md §8.5） */
-    nitro(),
+    /**
+     * Node 常驻服务部署产物：.output/server/index.mjs（见 requirements.md §8.5）。
+     *
+     * Nitro v3 的 `serverDir` 默认为 `false`（不扫描 `server/` 目录），运行时插件
+     * 必须显式登记。启动期要做的事（环境变量校验、邮件 worker）都放在 `server/plugins/`。
+     */
+    nitro({
+      plugins: ['server/plugins/validate-env.ts'],
+    }),
   ],
 });

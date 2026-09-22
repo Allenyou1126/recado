@@ -17,8 +17,10 @@
     "@tanstack/react-query": "5.103.2",
     "@tanstack/react-router": "1.170.38",
     "@tanstack/react-start": "1.168.57",
+    "pino": "10.3.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
