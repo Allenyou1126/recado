@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { renderMarkdown } from './rendering.service';
+import { raceWithTimeout, renderMarkdown } from './rendering.service';
 
 async function render(markdown: string) {
   const result = await renderMarkdown(markdown);
@@ -216,5 +216,50 @@ describe('外链处理（T2.5）', () => {
     const { html } = await render('[点我](javascript:alert(1))');
 
     expect(html).not.toContain('javascript:');
+  });
+});
+
+describe('长度限制与渲染超时（T2.7）', () => {
+  it('超过 maxContentBytes 直接拒绝，并回报实际字节数与上限', async () => {
+    const result = await renderMarkdown('a'.repeat(20), { maxContentBytes: 10 });
+
+    expect(result.error?.reason).toBe('VALIDATION_CONTENT_TOO_LONG');
+    expect(result.error?.details).toEqual({ bytes: 20, limit: 10 });
+  });
+
+  it('恰好等于上限时放行', async () => {
+    const result = await renderMarkdown('a'.repeat(10), { maxContentBytes: 10 });
+
+    expect(result.error).toBeNull();
+  });
+
+  it('按 UTF-8 字节数计算，中文按 3 字节计', async () => {
+    // 4 个中文字 = 12 字节 > 10
+    const result = await renderMarkdown('中文中文', { maxContentBytes: 10 });
+
+    expect(result.error?.reason).toBe('VALIDATION_CONTENT_TOO_LONG');
+    expect(result.error?.details).toEqual({ bytes: 12, limit: 10 });
+  });
+
+  it('超长输入在渲染之前就被拒绝', async () => {
+    const result = await renderMarkdown('```js\n' + 'x'.repeat(5000) + '\n```', {
+      maxContentBytes: 100,
+    });
+
+    expect(result.error?.reason).toBe('VALIDATION_CONTENT_TOO_LONG');
+  });
+});
+
+describe('raceWithTimeout', () => {
+  it('正常完成时返回结果', async () => {
+    await expect(raceWithTimeout(Promise.resolve('done'), 50)).resolves.toBe('done');
+  });
+
+  it('超时时返回哨兵值而不是挂住请求', async () => {
+    const never = new Promise<string>(() => {});
+
+    const outcome = await raceWithTimeout(never, 20);
+
+    expect(typeof outcome).toBe('symbol');
   });
 });

@@ -94,6 +94,36 @@ export const SANITIZE_SCHEMA: Schema = {
   },
 };
 
+/** 超时哨兵值；用 Symbol 而不是 `null`，避免与正常结果混淆 */
+const TIMED_OUT = Symbol('render-timed-out');
+
+/**
+ * 给异步渲染套一个墙钟上限。
+ *
+ * ⚠️ 局限要说清楚：JS 是单线程的，如果某个插件在做纯同步的重活，事件循环被占住，
+ * 定时器同样无法触发 —— 因此**字节上限才是主防线**，这里的超时针对的是
+ * 语言包按需加载、外部资源等异步等待。
+ *
+ * @returns 正常完成时返回结果；超时返回 `TIMED_OUT`
+ */
+export async function raceWithTimeout<TData>(
+  work: Promise<TData>,
+  milliseconds: number,
+): Promise<TData | typeof TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      work,
+      new Promise<typeof TIMED_OUT>((resolve) => {
+        timer = setTimeout(() => resolve(TIMED_OUT), milliseconds);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 /** 原文字节数（UTF-8），与 `comments.content_bytes` 同口径 */
 export function contentBytes(markdown: string): number {
   return new TextEncoder().encode(markdown).length;
@@ -165,10 +195,22 @@ export async function renderMarkdown(
     return err(RenderErrors.empty());
   }
 
+  // 长度上限在渲染**之前**检查：拒绝超长输入不该先花掉一次渲染的 CPU
+  if (bytes > resolved.maxContentBytes) {
+    return err(RenderErrors.tooLong(bytes, resolved.maxContentBytes));
+  }
+
   const mentions: string[] = [];
 
   try {
-    const file = await buildProcessor(resolved, mentions).process(markdown);
+    const file = await raceWithTimeout(
+      buildProcessor(resolved, mentions).process(markdown),
+      resolved.renderTimeoutMs,
+    );
+
+    if (file === TIMED_OUT) {
+      return err(RenderErrors.timedOut(resolved.renderTimeoutMs));
+    }
 
     return ok({
       html: String(file),
