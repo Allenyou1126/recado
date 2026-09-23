@@ -47,3 +47,7 @@ Thumbs.db
 # 临时文件
 .tmp/
 .cache/
+
+# Nix 构建产物（flake.lock 要提交，result 只是 `nix build` 出来的符号链接）
+/result
+/result-*

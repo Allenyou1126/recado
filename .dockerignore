@@ -23,3 +23,7 @@ node_modules
 .specs
 docker/compose.yaml
 *.log
+
+# Nix 构建产物（符号链接进 store，对镜像没有意义）
+result
+result-*
