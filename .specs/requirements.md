@@ -60,7 +60,7 @@
 | D1 | 系统定位 | 生产可用的自托管系统 | 功能可裁剪，但工程完成度（迁移、Docker、测试、日志、文档）不打折 |
 | D2 | Waline API 兼容 | **不兼容**，全新类型安全 API | 无历史包袱，可自由设计错误模型与分页；生态需自建 |
 | D3 | 租户模型 | 单实例多站点，site key + 来源域名白名单 | 所有业务表带 `site_id`；CORS 与鉴权按站点动态判定 |
-| D4 | 部署目标 | Node.js 常驻服务（Docker / VPS） | 可用本地能力，无需为 Edge 运行时抽象存储 |
+| D4 | 部署目标 | Node.js 常驻服务（Docker / Nix / VPS） | 可用本地能力，无需为 Edge 运行时抽象存储 |
 | D5 | 数据库 | PostgreSQL 单栈 | 可用 `jsonb`、`tsvector` 全文检索、`citext`、真事务、`LISTEN/NOTIFY` |
 | D6 | 评论者身份 | **完全匿名**：昵称 + 邮箱 + 网址，无注册无登录 | 无评论者会话体系；身份以邮箱归并 |
 | D7 | 邮箱标签 | **站点级隔离，仅用于前端展示** | 标签不参与审核判定 |
@@ -607,6 +607,7 @@ admins ───── sessions
 | --- | --- |
 | 容器化 | 多阶段 `Dockerfile`（非 root 运行、体积精简） |
 | 编排 | `docker-compose.yml`：应用 + PostgreSQL，含健康检查与数据卷 |
+| Nix 打包 | `flake.nix`：`packages.recado`（服务端 `.output`）、`packages.recado-cli`（CLI + `recado-migrate`）、`nixosModules.default`；依赖由 `fetchPnpmDeps` 冻结，构建期不联网（见 Q-19） |
 | 配置 | 全部走环境变量，启动时用 Zod 校验并给出可读错误 |
 | 数据库迁移 | Drizzle 版本化迁移文件；作为**独立部署步骤 / init container** 执行，不在应用启动时自动迁移（见 8.5） |
 | 首次引导 | 环境变量引导 owner；CLI 命令创建站点并输出 site key |
@@ -797,8 +798,9 @@ recado/
   同时暴露受保护的 `POST /internal/outbox/drain` 端点，便于外部 cron 或容器 sidecar 触发。
 - `WORKER_MODE=inline|standalone`：小规模用 inline；需要隔离时拆成独立容器。
 - **禁止**从请求处理器中 fire-and-forget 数据库写入。
-- **数据库迁移作为独立部署步骤执行**（init container 或 `docker compose run` 一次性任务），
-  **不在应用启动时自动迁移**——框架没有启动生命周期钩子，且迁移失败会污染启动流程。
+- **数据库迁移作为独立部署步骤执行**（init container、`docker compose run` 一次性任务，
+  或 Nix 部署下的 `recado-migrate`），**不在应用启动时自动迁移**——
+  框架没有启动生命周期钩子，且迁移失败会污染启动流程。
 - 选型理由：不引入 Redis / 消息队列，保持「一个容器 + 一个数据库」的部署承诺。
 
 ### 8.6 服务端代码隔离约定

@@ -3,7 +3,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 状态 | ✅ **全部关闭，无遗留待确认项** |
-| 确认方式 | 两轮结构化提问，共 18 项 |
+| 确认方式 | 两轮结构化提问，共 18 项；Q-19 为实现期追加 |
 | 配套文档 | `requirements.md` |
 
 > 本文件是需求阶段的决策归档。每条记录包含问题背景、你的结论，以及它对设计的连带影响。
@@ -33,6 +33,7 @@
 | Q-16 | 站点标识 | **一律 UUID**，不提供 slug |
 | Q-17 | 无角色用户 | **拒绝登录**，不产生会话 |
 | Q-18 | 机器调用的角色约定 | 复用同一约定，不区分人类/机器 |
+| Q-19 | 部署形态新增 Nix 打包（实现期追加） | flake 产物与镜像同源，含 NixOS 模块 |
 
 ---
 
@@ -234,6 +235,31 @@ Display Name 仅在后台展示用。
 
 ---
 
+### Q-19 部署形态新增 Nix 打包（实现期追加） → 与 Docker 同源，不引入第二套构建逻辑
+
+**背景**：D4 把部署目标定为「Node.js 常驻服务（Docker / VPS）」。Nix / NixOS 用户
+希望 `nix build` 直接得到可以交给 systemd 的产物，而不是先装 Docker。
+
+**决定**：
+- 新增 `flake.nix`（唯一输入是 nixpkgs），对外提供 `packages.recado`、
+  `packages.recado-cli`、`nixosModules.default` 与 `overlays.default`。
+- 产物**与镜像同源**：仍然是 `pnpm build` 产出的 `apps/server/.output`，
+  依赖由 nixpkgs 的 `fetchPnpmDeps` 冻结成固定输出，构建期不联网。
+  不为 Nix 单独维护一套构建脚本。
+- 迁移仍然是**独立部署步骤**（§8.5）：Nix 包提供 `recado-migrate` 命令，
+  NixOS 模块提供不带 `wantedBy` 的 `recado-migrate.service`，由运维显式触发。
+
+**设计影响**：
+- 运维 CLI 与迁移命令用 esbuild 打成单文件（`tsx` / `drizzle-kit` 都是 devDependency，
+  且 drizzle-kit 带平台相关的原生可执行文件），运行时不需要 node_modules。
+- 迁移改用 drizzle-orm 自带的运行时迁移器，与 `drizzle-kit migrate` 走同一套代码；
+  已实测两者迁移出的 schema 与 `drizzle.__drizzle_migrations` 记录完全一致。
+- `pnpm-lock.yaml` 变化后需要同步 `nix/pnpm-deps-hash.nix` 里的依赖哈希；
+  漏改会以 `hash mismatch` 明确报错，不会静默产出错误产物。
+- 部署文档新增第 11 节；D4 的「Docker / VPS」扩展为「Docker / Nix / VPS」。
+
+---
+
 ## 设计变更汇总
 
 本轮确认相对初始方案的主要改动：
@@ -249,3 +275,4 @@ Display Name 仅在后台展示用。
 | 7 | 性能目标按小规模下调；关键词检索降级为 `ILIKE`，`tsvector` 移到 P1 | Q-15 |
 | 8 | 邮箱必填不可配；新增 `originPolicy` 站点配置 | Q-02 / Q-12 |
 | 9 | 新增「首次部署锁死」风险与对策 | Q-17 |
+| 10 | 部署形态新增 Nix 打包（flake：产物与镜像同源，含 NixOS 模块） | Q-19 |
