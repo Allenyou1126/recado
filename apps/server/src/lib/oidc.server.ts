@@ -64,6 +64,25 @@ export function resetOidcConfigurationCache(): void {
   configurationCache = undefined;
 }
 
+/**
+ * 送给 token 端点的 `redirect_uri`（回调地址）。
+ *
+ * openid-client 的 `authorizationCodeGrant` 用「传入 URL 去掉 query/hash」推导它，
+ * 因此这里**不能用框架看到的请求 URL**：TLS 在反向代理上终止时，Nitro 交给应用的
+ * 是内网的 `http://…`（srvx 的 `hops` 默认 0，不信任 `X-Forwarded-Proto`），
+ * 推导出的值会变成 `http://<对外域名>/auth/callback`。
+ *
+ * Zitadel 换码时与授权请求登记的值**逐字符**比对，不一致即 `invalid_grant`
+ * （`redirect_uri does not correspond`）—— 所以协议与主机一律取登记值
+ * `OIDC_REDIRECT_URI`，只把回调带来的 query（`code` / `state` / `iss`）原样带上。
+ */
+export function resolveTokenRedirectUri(env: Env, callbackRequestUrl: string): URL {
+  const registered = new URL(env.OIDC_REDIRECT_URI);
+  registered.search = new URL(callbackRequestUrl).search;
+
+  return registered;
+}
+
 /** 组装授权请求（state / nonce / PKCE 一个都不能少） */
 export async function createAuthorizationRequest(env: Env): Promise<AuthorizationRequest> {
   const configuration = await getOidcConfiguration(env);
@@ -85,19 +104,27 @@ export async function createAuthorizationRequest(env: Env): Promise<Authorizatio
   return { url: url.href, state, nonce, codeVerifier };
 }
 
-/** 用授权码换 token，并从中解析出主体身份与角色 */
+/**
+ * 用授权码换 token，并从中解析出主体身份与角色。
+ *
+ * @param callbackRequestUrl 回调请求的原样 URL，**只**用于取 `code` / `state` / `iss`
+ */
 export async function completeAuthorization(
   env: Env,
-  currentUrl: string,
+  callbackRequestUrl: string,
   checks: { state: string; nonce: string; codeVerifier: string },
 ): Promise<Result<OidcIdentity, AuthError>> {
   try {
     const configuration = await getOidcConfiguration(env);
-    const tokens = await client.authorizationCodeGrant(configuration, new URL(currentUrl), {
-      expectedState: checks.state,
-      expectedNonce: checks.nonce,
-      pkceCodeVerifier: checks.codeVerifier,
-    });
+    const tokens = await client.authorizationCodeGrant(
+      configuration,
+      resolveTokenRedirectUri(env, callbackRequestUrl),
+      {
+        expectedState: checks.state,
+        expectedNonce: checks.nonce,
+        pkceCodeVerifier: checks.codeVerifier,
+      },
+    );
 
     const claims = tokens.claims();
     if (claims === undefined) return err(AuthErrors.oidcFailed('id_token'));
