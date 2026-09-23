@@ -17,6 +17,7 @@
 
 import { createMiddleware } from '@tanstack/react-start';
 
+import { resolveExternalOrigin } from '../../config/env.server';
 import { readCookie } from '../cookies.server';
 import { errorResponse } from '../http/respond';
 import { actorMiddleware } from './actor';
@@ -43,7 +44,7 @@ export const csrfMiddleware = createMiddleware({ type: 'request' })
 
     const origin = request.headers.get('origin');
 
-    if (origin !== null && !isSameOrigin(origin, request)) {
+    if (origin !== null && !isSameOrigin(origin, resolveExternalOrigin(context.env))) {
       context.logger.warn({ origin }, 'csrf origin mismatch');
       return errorResponse({ reason: 'FORBIDDEN_ORIGIN_NOT_ALLOWED', message: 'Origin mismatch' });
     }
@@ -62,13 +63,16 @@ export const csrfMiddleware = createMiddleware({ type: 'request' })
     return next();
   });
 
-/** 同源判定：协议 + 主机 + 端口一致 */
-function isSameOrigin(origin: string, request: Request): boolean {
+/**
+ * 同源判定：协议 + 主机 + 端口一致。
+ *
+ * 基准是**对外**来源而不是 `request.url`：TLS 在反向代理上终止时，框架拿到的
+ * 请求 URL 是内网的 `http://…`（Nitro 默认不信任 `X-Forwarded-Proto`），
+ * 与浏览器发来的 `Origin: https://…` 永远不相等，会让所有写操作静默 403。
+ */
+function isSameOrigin(origin: string, expectedOrigin: string): boolean {
   try {
-    const target = new URL(request.url);
-    const source = new URL(origin);
-
-    return source.protocol === target.protocol && source.host === target.host;
+    return new URL(origin).origin === new URL(expectedOrigin).origin;
   } catch {
     return false;
   }

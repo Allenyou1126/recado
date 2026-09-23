@@ -148,6 +148,17 @@ export function formatEnvIssues(issues: readonly EnvIssue[]): string {
 }
 
 /**
+ * 对外来源（协议 + 主机 + 端口）。
+ *
+ * **不要拿请求 URL 当基准**：TLS 在反向代理上终止时，框架看到的请求 URL 是内网的
+ * `http://…`（Nitro 默认不信任 `X-Forwarded-Proto`），按它做同源判定会永远失败。
+ * `PUBLIC_BASE_URL` 省略时退回 `OIDC_REDIRECT_URI` 的 origin —— 那通常就是部署地址。
+ */
+export function resolveExternalOrigin(env: Env): string {
+  return new URL(env.PUBLIC_BASE_URL ?? env.OIDC_REDIRECT_URI).origin;
+}
+
+/**
  * 读取并校验环境变量。
  *
  * @param source 环境变量来源，默认 `process.env`；测试可注入固定对象。
