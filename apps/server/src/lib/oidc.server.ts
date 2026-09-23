@@ -16,6 +16,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import * as client from 'openid-client';
 
 import type { Env } from '../config/env.server';
+import type { Logger } from './logger.server';
 
 /** 请求的 scope；`offline_access` 由 IdP 支持时才返回 refresh token */
 const OIDC_SCOPES = 'openid profile email';
@@ -108,11 +109,13 @@ export async function createAuthorizationRequest(env: Env): Promise<Authorizatio
  * 用授权码换 token，并从中解析出主体身份与角色。
  *
  * @param callbackRequestUrl 回调请求的原样 URL，**只**用于取 `code` / `state` / `iss`
+ * @param logger 请求级 logger：被吞掉的 IdP 错误细节只进这里，绝不进响应体
  */
 export async function completeAuthorization(
   env: Env,
   callbackRequestUrl: string,
   checks: { state: string; nonce: string; codeVerifier: string },
+  logger: Logger,
 ): Promise<Result<OidcIdentity, AuthError>> {
   try {
     const configuration = await getOidcConfiguration(env);
@@ -134,8 +137,12 @@ export async function completeAuthorization(
       roles: readRolesFromClaims(claims, env.OIDC_ROLE_CLAIM),
       idToken: tokens.id_token ?? null,
     });
-  } catch {
-    // 不把 IdP 的错误细节回给客户端：可能包含内部地址与客户端标识
+  } catch (cause) {
+    // 客户端仍只拿到统一错误码（细节可能含 IdP 内网地址与客户端标识），
+    // 但服务端必须留下真实原因 —— 否则这个 catch 会把所有失败压成同一句话，
+    // redirect_uri 不一致 / invalid_client / PKCE 失败在日志里长得一模一样。
+    logger.warn({ err: cause }, 'oidc token exchange failed');
+
     return err(AuthErrors.oidcFailed('token_exchange'));
   }
 }

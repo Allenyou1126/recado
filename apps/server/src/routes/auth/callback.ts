@@ -64,11 +64,16 @@ export const Route = createFileRoute('/auth/callback')({
           );
         }
 
-        const completed = await completeAuthorization(context.env, url.href, {
-          state: String(Reflect.get(checks, 'state')),
-          nonce: String(Reflect.get(checks, 'nonce')),
-          codeVerifier: String(Reflect.get(checks, 'codeVerifier')),
-        });
+        const completed = await completeAuthorization(
+          context.env,
+          url.href,
+          {
+            state: String(Reflect.get(checks, 'state')),
+            nonce: String(Reflect.get(checks, 'nonce')),
+            codeVerifier: String(Reflect.get(checks, 'codeVerifier')),
+          },
+          context.logger,
+        );
 
         if (completed.error) {
           context.logger.warn({ reason: completed.error.reason }, 'oidc callback failed');
