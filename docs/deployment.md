@@ -245,16 +245,17 @@ docker compose -f docker/compose.yaml up -d app          # 再重启
 
 ## 9. 常见故障
 
-| 现象                                     | 原因与处理                                                             |
-| ---------------------------------------- | ---------------------------------------------------------------------- |
-| 启动即退出，stderr 列出环境变量          | 配置缺失或格式错。对照 `.env.example` 补齐                             |
-| 登录后提示无权限                         | IdP 侧角色没配好。跑 `pnpm cli auth:diagnose --token <token>`          |
-| 访客拿到 403，站长不知为何               | 来源白名单没配。管理台「来源自检」页会列出最近被拒绝的 Origin 与原因   |
-| 所有公开请求 403                         | 白名单为空时**拒绝一切**（安全默认）。在站点设置里加上域名             |
-| 邮件一直失败                             | 看管理台「邮件」页的投递日志；`EAUTH` 这类错误是永久失败，不会无限重试 |
-| 评论发不出去                             | 检查 `minIntervalSeconds`（同 IP 同站点最小间隔）与 `maxContentBytes`  |
-| 换过 `SECRETS_KEY` 后邮件发不出          | SMTP 密码解不开，需要重新填写                                          |
-| 改了 `OIDC_ROLE_PREFIX` 后所有人都进不来 | 角色名必须跟着改；前缀变更等于换了一套授权命名空间                     |
+| 现象                                                                            | 原因与处理                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 启动即退出，stderr 列出环境变量                                                 | 配置缺失或格式错。对照 `.env.example` 补齐                                                                                                                                                                                                                                          |
+| 登录后提示无权限                                                                | IdP 侧角色没配好。跑 `pnpm cli auth:diagnose --token <token>`                                                                                                                                                                                                                       |
+| 访客拿到 403，站长不知为何                                                      | 来源白名单没配。管理台「来源自检」页会列出最近被拒绝的 Origin 与原因                                                                                                                                                                                                                |
+| 所有公开请求 403                                                                | 白名单为空时**拒绝一切**（安全默认）。在站点设置里加上域名                                                                                                                                                                                                                          |
+| 邮件一直失败                                                                    | 看管理台「邮件」页的投递日志；`EAUTH` 这类错误是永久失败，不会无限重试                                                                                                                                                                                                              |
+| 评论发不出去                                                                    | 检查 `minIntervalSeconds`（同 IP 同站点最小间隔）与 `maxContentBytes`                                                                                                                                                                                                               |
+| 换过 `SECRETS_KEY` 后邮件发不出                                                 | SMTP 密码解不开，需要重新填写                                                                                                                                                                                                                                                       |
+| 改了 `OIDC_ROLE_PREFIX` 后所有人都进不来                                        | 角色名必须跟着改；前缀变更等于换了一套授权命名空间                                                                                                                                                                                                                                  |
+| 迁移失败，stderr 只有一句 `Failed query: CREATE SCHEMA IF NOT EXISTS "drizzle"` | 真因在其后打印的错误链里（`code`/`detail`）。若是 `42501 permission denied for database`，说明**应用角色不是该库的属主**：本机库由 `recado-postgres-ownership.service` 自动处理，外部库请执行 `ALTER DATABASE <库> OWNER TO <角色>`（或 `GRANT CREATE ON DATABASE <库> TO <角色>`） |
 
 ---
 
@@ -346,12 +347,18 @@ HTTPS 与 `X-Forwarded-*` 依旧由反向代理负责（第 3 节）。
 `SECRETS_KEY`（≥32 字符）、`OIDC_CLIENT_SECRET`。**不含密码的 `DATABASE_URL`
 也可以写在 `settings` 里**（`database.createLocally = true` 就是自动这么做的）。
 
-模块提供两个 unit：
+模块提供两个 unit（外加一个本机数据库的辅助 unit）：
 
-| unit                     | 触发方式                                  | 说明                                                 |
-| ------------------------ | ----------------------------------------- | ---------------------------------------------------- |
-| `recado.service`         | 开机自启                                  | 应用本体：非 root 系统用户 + 一组 systemd 加固       |
-| `recado-migrate.service` | **手动** `systemctl start recado-migrate` | 一次性迁移，刻意不挂 `wantedBy`（见 §8.5 与第 2 节） |
+| unit                                | 触发方式                                  | 说明                                                          |
+| ----------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
+| `recado.service`                    | 开机自启                                  | 应用本体：非 root 系统用户 + 一组 systemd 加固                |
+| `recado-migrate.service`            | **手动** `systemctl start recado-migrate` | 一次性迁移，刻意不挂 `wantedBy`（见 §8.5 与第 2 节）          |
+| `recado-postgres-ownership.service` | 仅在 `database.createLocally` 时存在      | 把 `database.name` 的属主改成服务角色；迁移与启动都排在它之后 |
+
+> `database.createLocally` **不**使用 nixpkgs 的 `ensureDBOwnership`：它只把**与角色同名**
+> 的库交给该角色，库名一旦不同就会留下「库主是 postgres」，迁移必然在 `CREATE SCHEMA`
+> 上以 `permission denied` 失败。属主由上面那个 unit 显式修正（幂等，postgres 每次启动后重跑）。
+> 外部数据库没有这个 unit，需要你自己保证库主是服务角色（见 §9 的最后一行）。
 
 只想用 `nix/module.nix` 而不引入 flake 的话，需要自己提供包：
 `nixpkgs.overlays = [ recado.overlays.default ]`，或显式设置

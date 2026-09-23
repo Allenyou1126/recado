@@ -36,13 +36,50 @@ if (!connectionString) {
 const migrationsFolder =
   process.env['RECADO_MIGRATIONS_DIR'] ?? fileURLToPath(new URL('./drizzle/', import.meta.url));
 
+/**
+ * 把整个错误链摊平。
+ *
+ * drizzle 只把「失败的 SQL」写进 message，**真正的原因在 `cause` 上**：
+ * 例如 `CREATE SCHEMA` 失败时，只有 cause 才带着 pg 的
+ * `permission denied for database ...`（SQLSTATE 42501）。
+ * 只打 message 等于让运维对着一句 SQL 盲猜 —— 这条日志就是为排查而生的。
+ */
+function describeError(error) {
+  const lines = [];
+  const seen = new Set();
+  let current = error;
+
+  while (current instanceof Error && !seen.has(current)) {
+    seen.add(current);
+    lines.push(current.message);
+
+    // pg 的错误码与详情是定位问题的关键（42501 = 权限不足）
+    for (const key of ['code', 'detail', 'hint']) {
+      const value = Reflect.get(current, key);
+      if (typeof value === 'string' && value.length > 0) lines.push(`  ${key}: ${value}`);
+    }
+
+    current = current.cause;
+  }
+
+  return lines.length > 0 ? lines.join('\n') : String(error);
+}
+
 const pool = new Pool({ connectionString });
 
 try {
+  // 先说清楚「以谁的身份连到了哪个库」：迁移失败最常见的原因就是连错了库或权限不对，
+  // 这一行能让排查少绕一圈。库名与角色名不是敏感信息（密码绝不出现在这里）。
+  const identity = await pool.query(
+    'select current_database() as database, current_user as "user"',
+  );
+  const who = identity.rows[0];
+  if (who) process.stdout.write(`连接：${who.database}（角色 ${who.user}）\n`);
+
   await migrate(drizzle(pool), { migrationsFolder });
   process.stdout.write(`迁移完成：${migrationsFolder}\n`);
 } catch (error) {
-  process.stderr.write(`迁移失败：${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(`迁移失败：\n${describeError(error)}\n`);
   process.exitCode = 1;
 } finally {
   await pool.end();

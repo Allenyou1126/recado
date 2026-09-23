@@ -47,6 +47,10 @@ let
 
   environmentFile = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
 
+  # 用本机数据库（`database.createLocally`）时，必须等属主修正完成再动库 ——
+  # 具体原因见下面 recado-postgres-ownership 的注释。
+  localDatabaseUnits = lib.optional cfg.database.createLocally "recado-postgres-ownership.service";
+
   # 两个 unit 共用的加固：进程需要做的事只有「连数据库、发 SMTP、监听端口」。
   # ⚠️ 不要加 MemoryDenyWriteExecute —— V8 的 JIT 需要可写可执行内存。
   hardening = {
@@ -187,12 +191,34 @@ in
     services.postgresql = lib.mkIf cfg.database.createLocally {
       enable = true;
       ensureDatabases = [ cfg.database.name ];
-      ensureUsers = [
-        {
-          name = cfg.user;
-          ensureDBOwnership = true;
-        }
+      ensureUsers = [ { name = cfg.user; } ];
+    };
+
+    # ⚠️ **不要改用 `ensureUsers[].ensureDBOwnership`**：nixpkgs 的实现写死了
+    # `ALTER DATABASE "<用户名>" OWNER TO "<用户名>"`，只对**与角色同名**的库生效。
+    # 库名（`database.name`）是可配置的，一旦两者不同，库主会一直是 postgres，
+    # 迁移就会在 `CREATE SCHEMA IF NOT EXISTS "drizzle"` 上以
+    # `permission denied for database` 失败（SQLSTATE 42501）。
+    # 所以属主由这里显式改：幂等，且在 postgres 每次启动后重跑。
+    systemd.services.recado-postgres-ownership = lib.mkIf cfg.database.createLocally {
+      description = "Recado：把数据库属主交给服务角色";
+      # 必须排在 postgresql-setup 之后：建库/建角色是那个 unit 干的
+      # （它自己 after postgresql.service，并等数据库能接受连接），
+      # 只 after postgresql.service 会在全新实例上撞见「database 不存在」。
+      wantedBy = [
+        "postgresql.service"
+        "postgresql.target"
       ];
+      requires = [ "postgresql-setup.service" ];
+      after = [ "postgresql-setup.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "postgres";
+        ExecStart = "${config.services.postgresql.finalPackage}/bin/psql -tAc ${lib.escapeShellArg ''ALTER DATABASE "${cfg.database.name}" OWNER TO "${cfg.user}";''}";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+      };
     };
 
     services.recado.settings.DATABASE_URL = lib.mkIf cfg.database.createLocally (
@@ -203,7 +229,8 @@ in
       description = "Recado 评论系统";
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
-      after = [ "network-online.target" ] ++ lib.optional cfg.database.createLocally "postgresql.service";
+      after = [ "network-online.target" ] ++ localDatabaseUnits;
+      requires = localDatabaseUnits;
 
       inherit environment;
 
@@ -229,7 +256,8 @@ in
       #   systemctl start recado-migrate
       #   systemctl restart recado
       wants = [ "network-online.target" ];
-      after = [ "network-online.target" ] ++ lib.optional cfg.database.createLocally "postgresql.service";
+      after = [ "network-online.target" ] ++ localDatabaseUnits;
+      requires = localDatabaseUnits;
 
       inherit environment;
 
