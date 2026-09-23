@@ -57,6 +57,12 @@ export function getOidcConfiguration(env: Env): Promise<client.Configuration> {
 
   configurationCache = { issuer: env.OIDC_ISSUER_URL, value };
 
+  // 失败的 discovery 不能留在缓存里：一次网络抖动就会产生 rejected Promise，
+  // 一旦缓存住，本进程后续每次登录都会立刻失败，只能靠重启恢复。
+  void value.catch(() => {
+    if (configurationCache?.value === value) configurationCache = undefined;
+  });
+
   return value;
 }
 
