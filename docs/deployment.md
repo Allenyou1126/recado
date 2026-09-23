@@ -2,6 +2,9 @@
 
 面向**从零部署一个 Recado 实例**的运维者。按顺序做，不要跳步 —— 尤其是第 0 步。
 
+> 下面按 Docker Compose 讲。**用 Nix / NixOS 的话直接看第 11 节**，
+> 第 0 步（IdP 角色）与第 3、4、6 节（反代、建站点、邮件）同样适用。
+
 ---
 
 ## 0. 前置条件（**先做这一步，否则会把自己锁在门外**）
@@ -269,3 +272,109 @@ pnpm db:migrate                                          # 执行迁移（独立
 
 管理 API（脚本 / CI）：所有 `/api/v1/admin/*` 端点既接受会话 Cookie，也接受
 `Authorization: Bearer <OIDC access token>`，并需要 `X-Recado-Site-Id: <站点 UUID>`。
+
+---
+
+## 11. Nix / NixOS 部署
+
+仓库自带 `flake.nix`，产物与 Docker 镜像**同源**：都是 `pnpm build` 产出的
+`apps/server/.output`，区别只在依赖来自 `fetchPnpmDeps` 冻结的 pnpm 存储，
+因此**构建期不联网**、也不需要在构建机上装 pnpm。
+
+### 11.1 产物
+
+| 产物                           | 内容                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `packages.<system>.recado`     | 服务端：自包含的 `.output` + `bin/recado` 包装脚本，运行时只需要 Node.js |
+| `packages.<system>.recado-cli` | `bin/recado-cli`（运维 CLI）与 `bin/recado-migrate`（数据库迁移）        |
+
+迁移仍然按 §8.5 的约定**独立执行**：它是单独的命令、单独的一次性服务，
+**不会**在应用启动时自动跑。
+
+### 11.2 任意 Linux（不用 NixOS）
+
+```bash
+nix build .#recado        # → result/bin/recado
+nix build .#recado-cli    # → result/bin/recado-cli、result/bin/recado-migrate
+
+# 运行（环境变量与 Docker 部署完全一致）
+DATABASE_URL=postgres://... SESSION_SECRET=... SECRETS_KEY=... ./result/bin/recado
+
+# 迁移（独立步骤）
+DATABASE_URL=postgres://... ./result/bin/recado-migrate
+
+# 创建第一个站点
+DATABASE_URL=... ./result/bin/recado-cli site:create \
+  --name "我的博客" --origin https://blog.example.com
+```
+
+> 两条 `nix build` 都会写 `./result`；需要同时保留两个产物时用 `-o` 换个链接名
+> （例如 `nix build .#recado-cli -o result-cli`）。
+
+`recado` 不读任何内置配置，环境变量清单与第 1 节完全相同（可以写成 `.env`
+再用 systemd 的 `EnvironmentFile=` 注入）。默认监听 `PORT`（3000），
+HTTPS 与 `X-Forwarded-*` 依旧由反向代理负责（第 3 节）。
+
+### 11.3 NixOS 模块
+
+```nix
+{
+  inputs.recado.url = "git+https://your.git.host/recado";
+
+  # nixosSystem / flake 的 modules 里：
+  imports = [ recado.nixosModules.default ];
+
+  services.recado = {
+    enable = true;
+    settings = {
+      LOG_LEVEL = "info";
+      OIDC_ISSUER_URL = "https://id.example.com";
+      OIDC_CLIENT_ID = "recado";
+      OIDC_REDIRECT_URI = "https://comments.example.com/auth/callback";
+      OIDC_ROLE_PREFIX = "recado";
+      PUBLIC_BASE_URL = "https://comments.example.com";
+    };
+    # 🔑 密钥不进 Nix store（store 全局可读）：用 sops-nix / agenix 生成这个文件
+    environmentFile = "/run/secrets/recado.env";
+    # 可选：在本机跑 PostgreSQL（socket + peer 认证，不需要密码）
+    database.createLocally = true;
+  };
+}
+```
+
+`environmentFile` 至少要有 `DATABASE_URL`、`SESSION_SECRET`（≥32 字符）、
+`SECRETS_KEY`（≥32 字符）、`OIDC_CLIENT_SECRET`。**不含密码的 `DATABASE_URL`
+也可以写在 `settings` 里**（`database.createLocally = true` 就是自动这么做的）。
+
+模块提供两个 unit：
+
+| unit                     | 触发方式                                  | 说明                                                 |
+| ------------------------ | ----------------------------------------- | ---------------------------------------------------- |
+| `recado.service`         | 开机自启                                  | 应用本体：非 root 系统用户 + 一组 systemd 加固       |
+| `recado-migrate.service` | **手动** `systemctl start recado-migrate` | 一次性迁移，刻意不挂 `wantedBy`（见 §8.5 与第 2 节） |
+
+只想用 `nix/module.nix` 而不引入 flake 的话，需要自己提供包：
+`nixpkgs.overlays = [ recado.overlays.default ]`，或显式设置
+`services.recado.package` / `services.recado.cliPackage`。
+
+### 11.4 升级
+
+```bash
+nix flake update recado               # 或先把仓库切到目标提交
+sudo nixos-rebuild switch
+sudo systemctl start recado-migrate   # 先迁移
+sudo systemctl restart recado         # 再重启
+```
+
+迁移向后兼容一个版本，所以「先迁库、再换代码」这个顺序是安全的（与第 8 节一致）。
+
+### 11.5 打包侧的维护点
+
+- **`nix/pnpm-deps-hash.nix`**：改了 `pnpm-lock.yaml`、或换了 pnpm 大版本之后必须
+  重新生成依赖哈希，文件里写了办法。忘了改也不会静默出错 —— 构建会以
+  `hash mismatch` 报出正确值。
+- 只依赖 nixpkgs 一个 flake 输入；pnpm 用 nixpkgs 的 `pnpm_12`（12.3.x），
+  与 `package.json` 里锁的 12.4.1 同大版本，lockfile 格式（9.0）不变。
+- 目前只验证了 `x86_64-linux`；在 `aarch64-linux` 上首次构建会报出该平台的依赖
+  哈希，填进 `nix/pnpm-deps-hash.nix` 即可。
+- `nix flake check` 会构建上面两个产物；`nix fmt` 用 `nixfmt-rfc-style`。

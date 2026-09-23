@@ -41,6 +41,14 @@ pnpm dev                      # http://localhost:3000
 本系统的管理台权限完全由 IdP 角色决定，**无匹配角色会被直接拒绝登录且不产生会话**。
 所以要先在 IdP 里创建 `PREFIX.OWNER` 角色并授予自己，否则会把自己锁在门外。
 
+用 Nix / NixOS 的话不需要上面的 Docker 步骤，见
+[`docs/deployment.md` §11](./docs/deployment.md)：
+
+```bash
+nix build .#recado        # → result/bin/recado（服务端，自包含 .output）
+nix build .#recado-cli    # → result/bin/recado-cli、result/bin/recado-migrate
+```
+
 前端接入：
 
 ```ts
@@ -154,6 +162,8 @@ recado/
 │   ├── shared/          # Zod schema、类型、错误码（API 单一真源）
 │   └── sdk/             # @recado/client（Headless SDK）
 ├── docker/              # Dockerfile、compose.yaml
+├── nix/                 # Nix 打包：packages.nix / module.nix / 迁移入口
+├── flake.nix            # flake 输出：packages、nixosModules、overlays
 ├── docs/                # 部署指南
 ├── .specs/              # 需求、决策、开发规范、开发计划、研究资料
 └── AGENTS.md            # 面向 AI 编码代理的约束与指引
@@ -178,6 +188,11 @@ pnpm cli admin:grant --site <UUID>                       # 打印站点管理员
 pnpm cli auth:diagnose --token <token>                   # 诊断角色与可见站点
 pnpm cli comment:rerender --site <UUID> --dry-run        # 重放历史评论的 HTML
 pnpm cli outbox:retry --site <UUID>                      # 重发失败邮件
+
+nix build .#recado                                       # 服务端产物（仅 Node.js 运行时）
+nix build .#recado-cli                                   # 运维 CLI 与 recado-migrate
+nix flake check                                          # 构建两个产物
+nix fmt                                                  # nixfmt-rfc-style
 ```
 
 ---
@@ -186,10 +201,10 @@ pnpm cli outbox:retry --site <UUID>                      # 重发失败邮件
 
 | 文档 | 内容 |
 | --- | --- |
-| [`docs/deployment.md`](./docs/deployment.md) | **部署指南**：环境变量、ZITADEL 接入、SPF/DKIM/DMARC、威胁模型、备份与故障排查 |
+| [`docs/deployment.md`](./docs/deployment.md) | **部署指南**：环境变量、ZITADEL 接入、SPF/DKIM/DMARC、威胁模型、备份与故障排查、Nix/NixOS 部署（§11） |
 | `/docs` 与 `/openapi.json` | 运行时可交互 API 文档（由 Zod schema 推导，启动后访问） |
 | [`.specs/requirements.md`](./.specs/requirements.md) | 需求分析与功能规划（含 19 项决策 D1–D19） |
-| [`.specs/decision-log.md`](./.specs/decision-log.md) | 需求确认记录（18 项问答归档，含每项的理由） |
+| [`.specs/decision-log.md`](./.specs/decision-log.md) | 需求确认记录（19 项问答归档，含每项的理由） |
 | [`.specs/development-standards.md`](./.specs/development-standards.md) | 开发规范：分层、依赖注入、Result 错误处理、评审清单 |
 | [`.specs/development-plan.md`](./.specs/development-plan.md) | 里程碑 1 的阶段划分、进度追踪与完成定义 |
 | [`.specs/research/`](./.specs/research/) | Waline 功能盘点与 TanStack Start 实测报告 |

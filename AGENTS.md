@@ -40,7 +40,7 @@
 | --- | --- | --- |
 | 0 | [`.specs/development-plan.md`](./.specs/development-plan.md) | **执行入口**：阶段划分、进度、执行约定、红线、§6 的偏差记录 |
 | 1 | [`.specs/requirements.md`](./.specs/requirements.md) §1–§2 | 定位与 19 项已定决策（D1–D19） |
-| 2 | [`.specs/decision-log.md`](./.specs/decision-log.md) | 18 项决策的**理由**与连带影响 |
+| 2 | [`.specs/decision-log.md`](./.specs/decision-log.md) | 19 项决策的**理由**与连带影响 |
 | 3 | [`.specs/requirements.md`](./.specs/requirements.md) §5–§6 | 领域模型、站点配置、功能模块 M1–M10 |
 | 4 | [`.specs/development-standards.md`](./.specs/development-standards.md) | 分层、依赖注入、错误处理、评审清单 |
 | 5 | [`docs/deployment.md`](./docs/deployment.md) | 部署形态、威胁模型与运维约束（改行为前先看它承诺了什么） |
@@ -119,6 +119,7 @@
 | 邮箱归并 | 大小写由 `citext` + `normalizeEmail` 处理；**不要**做「去掉 Gmail 点号」这类归一 |
 | 通知 | 入队必须在**事务提交之后**；「自己回复自己」用**邮箱**判定而不是昵称 |
 | 测试产物 | `apps/server/tests/http` 会拉起 `.output` 产物，**产物过期会自动重建**——改了源码后不必手动 build，但也别指望它测的是 dev 行为 |
+| Nix 打包 | 改了 `pnpm-lock.yaml` 或 pnpm 大版本后必须同步 `nix/pnpm-deps-hash.nix` 的依赖哈希（漏改会以 `hash mismatch` 明确报错，不会静默出错）。`nix/recado-migrate.mjs` 用的是 drizzle-orm 运行时迁移器，与 `drizzle-kit migrate` 是同一套代码，改迁移行为时两边都要照顾 |
 
 ---
 
@@ -279,7 +280,7 @@ pnpm cli outbox:retry --site <UUID> [--id <id>]          # 重发失败邮件
 ## 文档维护
 
 - 需求或决策变更时，**同步更新 `requirements.md` 与 `decision-log.md`**，不要只改一处。
-- 新决策追加到 `decision-log.md`，编号顺延（当前到 `Q-18`）。
+- 新决策追加到 `decision-log.md`，编号顺延（当前到 `Q-19`）。
 - 完成一个阶段后，勾选 `.specs/development-plan.md` §4 的进度与对应验收项，
   并**单独提交**一次 `docs(specs): 更新开发计划进度`。
 - 规格与实现出现不可调和的冲突时：**优先改规格并说明理由**，不要默默偏离；
