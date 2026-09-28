@@ -162,11 +162,20 @@ const created = await client.createComment({
    - 勾选 **PKCE**（Recado 强制使用 Authorization Code + PKCE）
    - 把 client id / secret 填进 `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET`
    - `OIDC_ISSUER_URL` 填 ZITADEL 实例的 issuer
-3. **授予自己角色**：在 ZITADEL 里把 `recado.OWNER` 授予你的账号。
+3. **打开角色断言**：项目 → General → 勾选 **Assert Roles on Authentication**。
+   ⚠️ ZITADEL 只在「被请求或被配置」时才把角色写进 ID Token（见
+   [Claims 矩阵](https://zitadel.com/docs/apis/openidoauth/claims)）：不打开这个开关，
+   token 里根本不会有角色 claim。替代做法是为每个角色请求保留 scope
+   `urn:zitadel:iam:org:project:role:<角色名>`，本系统用前者。
+4. **填对角色 claim 路径**：`OIDC_ROLE_CLAIM=urn:zitadel:iam:org:project:roles`。
+   ZITADEL 断言角色时给的是**以角色名为键的对象**（值是「组织 id → 主域名」，只说明
+   在哪个组织拥有该角色），不是数组。Recado 两种形状都读，但**默认值 `roles`
+   在 ZITADEL 下永远是空的**，登录会一直停在 `AUTH_NO_MATCHING_ROLE`。
+5. **授予自己角色**：在 ZITADEL 里把 `recado.OWNER` 授予你的账号。
    ⚠️ 这一步没做的话，登录会返回 `AUTH_NO_MATCHING_ROLE` 且**不产生会话**。
-4. **站点管理员**：为每个站点创建一个角色 `recado.ADMIN.<站点 UUID>` 并授予相应账号。
+6. **站点管理员**：为每个站点创建一个角色 `recado.ADMIN.<站点 UUID>` 并授予相应账号。
    站点 UUID 在管理台「站点」页可见，也可以用 `pnpm cli admin:grant --site <UUID>` 打印。
-5. **脚本 / CI（client credentials）**：在 ZITADEL 创建机器用户与服务账号，
+7. **脚本 / CI（client credentials）**：在 ZITADEL 创建机器用户与服务账号，
    授予同样的角色。调用时带 `Authorization: Bearer <access token>` 即可 ——
    Bearer 路径**每次都验签并现算角色**，因此 IdP 侧撤销会立即生效。
 
@@ -181,6 +190,13 @@ pnpm cli auth:diagnose --token "<access token>"
 ```
 
 它会打印「拿到了哪些角色、命中了哪些、能看见哪些站点」，以及排查顺序建议。
+
+浏览器登录被拒（`AUTH_NO_MATCHING_ROLE`，`details.roles` 为 `[]`）时，服务端日志里会有
+一行 `oidc claims contain no roles at the configured path`，并列出 token 里**实际存在的
+claim 名**。对照它就能区分两种原因：
+
+- 列出的 claim 名里有角色 claim，只是路径没填对 → 改 `OIDC_ROLE_CLAIM`
+- 压根没有角色 claim → IdP 侧没断言角色（第 3 步）或角色没授予（第 5 步）
 
 ---
 

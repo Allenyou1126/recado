@@ -26,25 +26,57 @@ export type RoleMatch = {
 };
 
 /**
- * 从 claims 里按「点分路径」取角色数组。
+ * 从 claims 里取角色名。
  *
- * 路径可配（默认 `roles`），以兼容 `groups` 与 Keycloak 的嵌套结构
- * （如 `realm_access.roles`）。路径上的任何一段不是对象就返回空数组，
- * 而不是抛异常 —— IdP 的 claims 结构不在我们的控制之内。
+ * **claim 名先按整名匹配**，匹配不到才按点分路径逐段下钻。原因：IdP 的 claim 名
+ * 常常自带 `.` 或 `:`（Zitadel 的 `urn:zitadel:iam:org:project:roles`、Auth0 的
+ * `https://example.com/roles`），按点拆分永远取不到那个键。
+ *
+ * **两种形状都接受**：
+ *
+ * - 字符串数组 —— Keycloak 的 `realm_access.roles`、通用的 `groups`
+ * - **以角色名为键的对象** —— Zitadel 断言角色时的形状
+ *   （`{ "recado.OWNER": { "<组织 id>": "<主域名>" } }`，值只说明「在哪个组织拥有
+ *   该角色」，我们只要键）
+ *
+ * 路径取不到、或类型不是上面两种时返回空数组而不是抛异常 ——
+ * IdP 的 claims 结构不在我们的控制之内。
  */
 export function readRolesFromClaims(claims: Record<string, unknown>, claimPath: string): string[] {
+  const value = readClaimValue(claims, claimPath);
+
+  if (Array.isArray(value)) {
+    return value.filter((role): role is string => typeof role === 'string');
+  }
+
+  if (isRecord(value)) {
+    return Object.keys(value);
+  }
+
+  return [];
+}
+
+/** 取 claim 值：整名优先，其次点分路径；路径上任何一段不是对象就返回 undefined */
+function readClaimValue(claims: Record<string, unknown>, claimPath: string): unknown {
+  if (Object.hasOwn(claims, claimPath)) {
+    return claims[claimPath];
+  }
+
   const segments = claimPath.split('.').filter((segment) => segment.length > 0);
 
   let current: unknown = claims;
 
   for (const segment of segments) {
-    if (typeof current !== 'object' || current === null) return [];
-    current = (current as Record<string, unknown>)[segment];
+    if (!isRecord(current)) return undefined;
+    current = current[segment];
   }
 
-  if (!Array.isArray(current)) return [];
+  return current;
+}
 
-  return current.filter((value): value is string => typeof value === 'string');
+/** 对象类型守卫：避免对 `unknown` 做 `as` 断言（开发规范禁止强制断言） */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 /**

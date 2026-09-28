@@ -142,7 +142,8 @@ const diagnoseCommand: Command = {
         '',
         '排查顺序：',
         `  1. IdP 里是否存在名为 ${prefix}.OWNER 或 ${prefix}.ADMIN.<站点 UUID> 的角色`,
-        `  2. claim 路径是否为 ${env.OIDC_ROLE_CLAIM}（Keycloak 常见写法是 realm_access.roles）`,
+        `  2. claim 路径是否为 ${env.OIDC_ROLE_CLAIM}（Keycloak 是 realm_access.roles，` +
+          'ZITADEL 是 urn:zitadel:iam:org:project:roles，且需开启项目级「Assert Roles on Authentication」）',
         '  3. 站点管理员角色的站点段必须是 UUID，不是站点名或 slug',
       );
     } else if (scope.type === 'instance') {
