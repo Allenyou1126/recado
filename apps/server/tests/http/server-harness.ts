@@ -76,7 +76,25 @@ export type RunningServer = {
 
 function run(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: SERVER_DIR, stdio: 'inherit' });
+    const child = spawn(command, args, {
+      cwd: SERVER_DIR,
+      stdio: 'inherit',
+      /**
+       * ⚠️ 必须显式传 `NODE_ENV=production`。
+       *
+       * 这个进程是从 vitest 里 spawn 的，而 vitest 会把 `NODE_ENV` 设成 `test`；
+       * Vite 见到非 production 就改用**开发版 JSX 运行时**（`jsxDev: !isProduction`，
+       * 见 vite/dist/node `resolveConfig`）打包 —— 产物里是 `jsxDEV`，而 react 的
+       * 生产条件下没有这个导出，于是**任何 SSR 渲染**都失败：
+       *
+       *   TypeError: (0 , import_jsx_dev_runtime.jsxDEV) is not a function
+       *
+       * 这个假象极具误导性：所有 JSON 接口照常通过，只有「真的渲染一个已登录页面」
+       * 的测试才会暴露，而那时失败信息指向的是 JSX 运行时，不是被测代码。
+       * 这条基座的存在意义就是「跑的是生产产物」，构建环境也必须对齐生产。
+       */
+      env: { ...process.env, NODE_ENV: 'production' },
+    });
 
     child.on('error', reject);
     child.on('exit', (code) => {
