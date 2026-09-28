@@ -22,6 +22,10 @@
 #     environmentFile = "/run/secrets/recado.env";   # DATABASE_URL / SESSION_SECRET / SECRETS_KEY / OIDC_CLIENT_SECRET
 #     database.createLocally = true;                 # 在本机起 PostgreSQL（socket + peer 认证）
 #   };
+#
+# 装好之后创建第一个站点（CLI 包装命令默认就装进 PATH）：
+#
+#   sudo recado-cli site:create --name "我的博客" --origin https://blog.example.com
 {
   config,
   lib,
@@ -45,7 +49,8 @@ let
     PORT = toString cfg.port;
   };
 
-  environmentFile = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
+  # systemd 单元的 EnvironmentFile=（可空列表）；CLI 包装脚本单独收 cfg.environmentFile。
+  environmentFiles = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
 
   # 用本机数据库（`database.createLocally`）时，必须等属主修正完成再动库 ——
   # 具体原因见下面 recado-postgres-ownership 的注释。
@@ -79,6 +84,18 @@ let
     CapabilityBoundingSet = [ "" ];
     AmbientCapabilities = [ "" ];
   };
+
+  # `recado-cli` 包装命令：服务的配置只活在 systemd 单元里（Environment= 与
+  # EnvironmentFile=），直接跑 `bin/recado-cli` 会以「环境变量校验失败」告终。
+  # 包装脚本用 systemd-run 起临时单元来复现同样的环境与用户，
+  # 细节与取舍见 nix/cli-wrapper.nix。
+  cliWrapper = pkgs.callPackage ./cli-wrapper.nix {
+    inherit (cfg) user group;
+    inherit environment hardening;
+
+    cliPackage = cfg.cliPackage;
+    environmentFile = cfg.environmentFile;
+  };
 in
 {
   options.services.recado = {
@@ -100,6 +117,36 @@ in
       default = pkgs.recado-cli;
       defaultText = lib.literalExpression "pkgs.recado-cli";
       description = "运维 CLI 与迁移命令所在的包（提供 `recado-cli` 与 `recado-migrate`）。";
+    };
+
+    cli = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          把 `recado-cli` 包装命令装进系统 PATH。
+
+          包装命令以**服务身份**（`services.recado.user`）和**服务的环境变量**
+          （`services.recado.settings` + `services.recado.environmentFile`）执行运维 CLI，
+          因此 `database.createLocally` 的 socket + peer 认证、以及只有 root 能读的
+          密钥文件都能正常工作 —— 直接运行 `bin/recado-cli` 做不到这一点：服务的配置
+          只存在于 systemd 单元里，裸二进制会以「环境变量校验失败」退出。
+
+          ⚠️ 包装命令需要 root（`sudo recado-cli …`）：它要通过 systemd 的临时单元
+          复现服务的运行环境。密钥由 systemd 以 root 读取，**不会**出现在命令行参数里。
+        '';
+      };
+
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = cliWrapper;
+        defaultText = lib.literalMD "由本模块生成的 `recado-cli` 包装脚本";
+        description = ''
+          装进 PATH 的那份 CLI。默认是上面说的包装命令，可以覆盖成自己的包装
+          （`cli.enable = false` 时这个默认值不会被构建）。想直接用裸 CLI 的话，
+          取 `services.recado.cliPackage`。
+        '';
+      };
     };
 
     port = lib.mkOption {
@@ -187,6 +234,9 @@ in
 
     users.groups.${cfg.group} = { };
 
+    # 运维 CLI：装的是包装命令而不是裸二进制（原因见 nix/cli-wrapper.nix）。
+    environment.systemPackages = lib.mkIf cfg.cli.enable [ cfg.cli.package ];
+
     # 本机数据库：只在显式开启时接管 postgresql 服务。
     services.postgresql = lib.mkIf cfg.database.createLocally {
       enable = true;
@@ -239,7 +289,7 @@ in
         ExecStart = "${cfg.package}/bin/recado";
         User = cfg.user;
         Group = cfg.group;
-        EnvironmentFile = environmentFile;
+        EnvironmentFile = environmentFiles;
         Restart = "on-failure";
         RestartSec = 5;
         # 探针：/healthz 只看进程（数据库抖动不误杀），/readyz 会查库（503 时摘流量）。
@@ -267,7 +317,7 @@ in
         ExecStart = "${cfg.cliPackage}/bin/recado-migrate";
         User = cfg.user;
         Group = cfg.group;
-        EnvironmentFile = environmentFile;
+        EnvironmentFile = environmentFiles;
       };
     };
   };

@@ -125,6 +125,9 @@ location / {
 pnpm cli site:create --name "我的博客" --origin https://blog.example.com
 ```
 
+> NixOS 部署（§11）用 `sudo recado-cli site:create …`：服务的配置只存在于 systemd
+> 单元里，模块提供的包装命令会以服务身份、带上服务的环境变量去跑。
+
 输出里的 **site key**（`rc_...`）填进博客前端即可。
 
 > 🔒 **site key 是公开标识，不是密钥。** 它只用来选出「这次请求属于哪个站点」。
@@ -287,6 +290,10 @@ pnpm cli outbox:retry --site <UUID>                      # 重发失败邮件
 pnpm db:migrate                                          # 执行迁移（独立步骤）
 ```
 
+> NixOS 模块部署（§11）不需要仓库与 pnpm：把上面的 `pnpm cli` 换成
+> `sudo recado-cli`（迁移换成 `sudo systemctl start recado-migrate`），
+> 环境变量由包装命令从模块配置里带过去 —— 详见 §11.4。
+
 管理 API（脚本 / CI）：所有 `/api/v1/admin/*` 端点既接受会话 Cookie，也接受
 `Authorization: Bearer <OIDC access token>`，并需要 `X-Recado-Site-Id: <站点 UUID>`。
 
@@ -363,7 +370,7 @@ HTTPS 与 `X-Forwarded-*` 依旧由反向代理负责（第 3 节）。
 `SECRETS_KEY`（≥32 字符）、`OIDC_CLIENT_SECRET`。**不含密码的 `DATABASE_URL`
 也可以写在 `settings` 里**（`database.createLocally = true` 就是自动这么做的）。
 
-模块提供两个 unit（外加一个本机数据库的辅助 unit）：
+模块提供两个 unit、一个本机数据库的辅助 unit，外加一条 CLI 命令（§11.4）：
 
 | unit                                | 触发方式                                  | 说明                                                          |
 | ----------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
@@ -380,7 +387,40 @@ HTTPS 与 `X-Forwarded-*` 依旧由反向代理负责（第 3 节）。
 `nixpkgs.overlays = [ recado.overlays.default ]`，或显式设置
 `services.recado.package` / `services.recado.cliPackage`。
 
-### 11.4 升级
+### 11.4 创建第一个站点（CLI）
+
+模块默认会把 `recado-cli` 装进系统 PATH（`services.recado.cli.enable = true`）。
+**它必须是包装命令，不能是裸二进制**：服务的配置只活在 systemd 单元里 ——
+`settings` 是单元的 `Environment=`，密钥是 `EnvironmentFile=`（通常 0400、只有 root 能读），
+所以直接在 shell 里跑 `bin/recado-cli` 只会得到
+「环境变量校验失败，共 8 项问题：… 未设置（必填）」。
+
+包装命令用 `systemd-run` 起一个临时单元，把服务那套**原样复现**：
+
+```bash
+sudo recado-cli site:create --name "我的博客" --origin https://blog.example.com
+sudo recado-cli admin:grant --site <站点 UUID>
+sudo recado-cli outbox:retry --site <UUID>
+sudo recado-cli comment:rerender --site <UUID> --dry-run
+```
+
+| 行为         | 说明                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| 需要 root    | 临时单元要由 PID 1 创建（与 `systemctl start recado-migrate` 同级）；也只有 root 能让 systemd 读走 0400 的密钥文件 |
+| 密钥不进参数 | 密钥由 systemd 以 root 读取 `environmentFile`，`ps` / `/proc/<pid>/cmdline` 里看不到任何密钥                       |
+| 以服务身份跑 | 默认用户 `recado`：`database.createLocally` 的 socket + peer 认证靠 OS 用户名成立                                  |
+| 加固一致     | 与服务同一组 systemd 加固项，CLI 不会成为绕过沙箱的后门                                                            |
+| 退出码透传   | stdout/stderr 直连终端，`$?` 就是 CLI 的退出码（脚本里可以直接判断）                                               |
+
+> ⚠️ 不要写成 `sudo -u recado recado-cli …`：服务的 `settings` 在单元的 `Environment=`
+> 里，shell 里根本拿不到；密钥文件另有属主与权限（sops-nix / agenix 常见做法是 0400 root）。
+> 这两样都交给包装命令，由 systemd 提供。也别指望 `nix run` / `nix shell` 能拿到配置 ——
+> 环境变量的真源是 `services.recado.settings` 与 `environmentFile`。
+
+顺序：**先迁移（`sudo systemctl start recado-migrate`），再建站点**，
+否则 `sites` 表还不存在。
+
+### 11.5 升级
 
 ```bash
 nix flake update recado               # 或先把仓库切到目标提交
@@ -391,7 +431,7 @@ sudo systemctl restart recado         # 再重启
 
 迁移向后兼容一个版本，所以「先迁库、再换代码」这个顺序是安全的（与第 8 节一致）。
 
-### 11.5 打包侧的维护点
+### 11.6 打包侧的维护点
 
 - **`nix/pnpm-deps-hash.nix`**：改了 `pnpm-lock.yaml`、或换了 pnpm 大版本之后必须
   重新生成依赖哈希，文件里写了办法。忘了改也不会静默出错 —— 构建会以
@@ -400,4 +440,6 @@ sudo systemctl restart recado         # 再重启
   与 `package.json` 里锁的 12.4.1 同大版本，lockfile 格式（9.0）不变。
 - 目前只验证了 `x86_64-linux`；在 `aarch64-linux` 上首次构建会报出该平台的依赖
   哈希，填进 `nix/pnpm-deps-hash.nix` 即可。
-- `nix flake check` 会构建上面两个产物；`nix fmt` 用 `nixfmt-rfc-style`。
+- `nix flake check` 构建上面两个产物，并按 §11.3 的最小配置求值一遍 NixOS 模块
+  （同时把 CLI 包装脚本构建出来，防止「装进 PATH 的是裸二进制」这类回归）；
+  `nix fmt` 用 `nixfmt-rfc-style`。

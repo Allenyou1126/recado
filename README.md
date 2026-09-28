@@ -49,6 +49,11 @@ nix build .#recado        # → result/bin/recado（服务端，自包含 .outpu
 nix build .#recado-cli    # → result/bin/recado-cli、result/bin/recado-migrate
 ```
 
+用 NixOS 模块（`nixosModules.default`）时，建站点是
+`sudo recado-cli site:create --name "我的博客" --origin https://blog.example.com`：
+服务的配置只存在于 systemd 单元里，模块提供的包装命令会以服务身份、带上服务的
+环境变量运行（见 [`docs/deployment.md` §11.4](./docs/deployment.md)）。
+
 前端接入：
 
 ```ts
@@ -191,7 +196,7 @@ pnpm cli outbox:retry --site <UUID>                      # 重发失败邮件
 
 nix build .#recado                                       # 服务端产物（仅 Node.js 运行时）
 nix build .#recado-cli                                   # 运维 CLI 与 recado-migrate
-nix flake check                                          # 构建两个产物
+nix flake check                                          # 构建两个产物 + 求值 NixOS 模块
 nix fmt                                                  # nixfmt-rfc-style
 ```
 

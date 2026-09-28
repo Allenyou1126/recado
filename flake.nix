@@ -49,10 +49,78 @@
         }
       );
 
-      # `nix flake check` 只构建 checks，这里让两个产物都进检查范围。
-      checks = forAllSystems (pkgs: {
-        inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) recado recado-cli;
-      });
+      # `nix flake check` 的覆盖范围：两个产物 + NixOS 模块。
+      checks = forAllSystems (
+        pkgs:
+        let
+          system = pkgs.stdenv.hostPlatform.system;
+
+          # 模块级回归检查：真的把 `nixosModules.default` 按文档里的最小配置求值一遍，
+          # 并把生成的 `recado-cli` 包装脚本构建出来。
+          #
+          # 为什么值得单列一条：服务的环境变量只活在 systemd 单元里（`Environment=`
+          # 与 `EnvironmentFile=`），把 `cliPackage` 直接丢进 PATH 是不够的 ——
+          # 裸二进制会以「环境变量校验失败」退出，运维就没法创建第一个站点。
+          # 光构建 `packages.recado-cli` 覆盖不到这一点。
+          recadoModule = lib.nixosSystem {
+            inherit system;
+            modules = [
+              self.nixosModules.default
+              {
+                nixpkgs.pkgs = pkgs;
+
+                # 只是求值用的示例配置，不承载任何状态：写死它免得刷一条
+                # 「system.stateVersion is not set」的求值警告。
+                system.stateVersion = "26.11";
+
+                services.recado = {
+                  enable = true;
+                  environmentFile = "/run/secrets/recado.env";
+                  settings = {
+                    OIDC_ISSUER_URL = "https://idp.example.com";
+                    OIDC_CLIENT_ID = "recado";
+                    OIDC_REDIRECT_URI = "https://comments.example.com/auth/callback";
+                    OIDC_ROLE_PREFIX = "recado";
+                    PUBLIC_BASE_URL = "https://comments.example.com";
+                  };
+                  database.createLocally = true;
+                };
+              }
+            ];
+          };
+
+          cliWrapper = recadoModule.config.services.recado.cli.package;
+        in
+        {
+          inherit (self.packages.${system}) recado recado-cli;
+
+          nixos-module =
+            if lib.elem cliWrapper recadoModule.config.environment.systemPackages then
+              pkgs.runCommand "recado-nixos-module-check" { } ''
+                # 引用即构建依赖：包装脚本本身必须能构建出来
+                test -x ${cliWrapper}/bin/recado-cli
+
+                # 包装脚本必须复现「服务身份 + 服务环境」这三件事：
+                # 运行用户、密钥文件（密钥不进命令行参数）、以及 settings
+                grep -q -F -- '--uid=recado' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--gid=recado' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--property=EnvironmentFile=/run/secrets/recado.env' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--setenv=OIDC_ISSUER_URL=https://idp.example.com' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--setenv=NODE_ENV=production' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--setenv=DATABASE_URL=postgres:///recado?host=/run/postgresql' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--setenv=PORT=3000' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--property=NoNewPrivileges=true' ${cliWrapper}/bin/recado-cli
+
+                # 退出码要能透传给调用者（脚本里靠 systemd-run --wait --pipe）
+                grep -q -F -- '--wait' ${cliWrapper}/bin/recado-cli
+                grep -q -F -- '--pipe' ${cliWrapper}/bin/recado-cli
+
+                touch $out
+              ''
+            else
+              throw "services.recado.cli.enable 默认开启时，包装脚本必须进入 environment.systemPackages";
+        }
+      );
 
       nixosModules = {
         recado = ./nix/module.nix;

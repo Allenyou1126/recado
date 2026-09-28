@@ -256,6 +256,11 @@ Display Name 仅在后台展示用。
   已实测两者迁移出的 schema 与 `drizzle.__drizzle_migrations` 记录完全一致。
 - `pnpm-lock.yaml` 变化后需要同步 `nix/pnpm-deps-hash.nix` 里的依赖哈希；
   漏改会以 `hash mismatch` 明确报错，不会静默产出错误产物。
+- NixOS 模块额外把 `recado-cli` 包装成一条命令（`nix/cli-wrapper.nix`，
+  `services.recado.cli.enable` 默认开启）：服务的配置只活在 systemd 单元里
+  （`Environment=` 与 `EnvironmentFile=`），把裸二进制丢进 PATH 就没法创建第一个站点
+  （实测报「环境变量校验失败，共 8 项问题」）。包装命令用 `systemd-run` 起临时单元
+  复现同样的用户、环境变量与加固，密钥由 systemd 以 root 读取、不进命令行参数。
 - 部署文档新增第 11 节；D4 的「Docker / VPS」扩展为「Docker / Nix / VPS」。
 
 ---

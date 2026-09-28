@@ -120,6 +120,7 @@
 | 通知 | 入队必须在**事务提交之后**；「自己回复自己」用**邮箱**判定而不是昵称 |
 | 测试产物 | `apps/server/tests/http` 会拉起 `.output` 产物，**产物过期会自动重建**——改了源码后不必手动 build，但也别指望它测的是 dev 行为 |
 | Nix 打包 | 改了 `pnpm-lock.yaml` 或 pnpm 大版本后必须同步 `nix/pnpm-deps-hash.nix` 的依赖哈希（漏改会以 `hash mismatch` 明确报错，不会静默出错）。`nix/recado-migrate.mjs` 用的是 drizzle-orm 运行时迁移器，与 `drizzle-kit migrate` 是同一套代码，改迁移行为时两边都要照顾 |
+| NixOS 模块的 CLI | `services.recado.cli.package` 必须是 `nix/cli-wrapper.nix` 生成的**包装命令**（systemd-run 临时单元，复现服务的用户 / `Environment=` / `EnvironmentFile=` / 加固），**不要换成裸 `cliPackage`**：服务的配置只存在于 systemd 单元里，裸二进制会以「环境变量校验失败」退出，运维就没法创建第一个站点 |
 
 ---
 
