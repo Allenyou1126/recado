@@ -721,7 +721,49 @@ describe('管理端 API（生产构建）', () => {
   });
 });
 
+/**
+ * 管理台每个页面 + 一条**只有该页叶子组件真的执行了才会出现**的静态文案。
+ *
+ * 这些文案都是 SSR 期间就会渲染的无条件 JSX（占位符 / 说明句），
+ * 不依赖任何 `useQuery` 结果，因此适合当「叶子渲染到了」的探针。
+ *
+ * 带 `?page=1` 的两条是因为它们的 search schema 把 `page` 写成 `.default(1)`，
+ * 缺参数时框架会先 307 规范化 URL（fetch 默认跟随重定向）。
+ */
+const CONSOLE_PAGES = [
+  { path: '/admin', marker: '加载中…' },
+  { path: '/admin/comments?page=1', marker: '/posts/hello' },
+  { path: '/admin/members', marker: '站长 / 作者 / 友链' },
+  { path: '/admin/email', marker: '发信测试' },
+  { path: '/admin/audit?page=1', marker: '加载中…' },
+  { path: '/admin/sites', marker: '新建站点' },
+  { path: '/admin/origins', marker: '只保留最近 200 条' },
+] as const;
+
 describe('管理台页面（生产构建）', () => {
+  let consoleCookie: string;
+
+  beforeAll(async () => {
+    // 直接建一个实例级管理员的会话：这几条测的是**页面渲染**，
+    // OIDC 握手本身由 auth 的集成测试覆盖
+    const session = await startSession(db.db, {
+      identity: {
+        oidcSubject: 'https://idp.test#http-console',
+        kind: 'human',
+        email: 'console@example.com',
+        displayName: 'HTTP Console',
+        avatarUrl: null,
+      },
+      roles: ['recado.OWNER'],
+      rolePrefix: 'recado',
+      ip: null,
+      userAgent: 'vitest',
+    });
+
+    if (!session.data) throw new Error('创建测试会话失败');
+    consoleCookie = `recado_session=${session.data.token}`;
+  });
+
   it('未登录访问管理台页面不会泄露数据（跳转或错误页）', async () => {
     const response = await fetch(url('/admin/comments'), { redirect: 'manual' });
 
@@ -729,6 +771,33 @@ describe('管理台页面（生产构建）', () => {
     expect([302, 303, 307, 200]).toContain(response.status);
     const body = await response.text();
     expect(body).not.toContain('@example.com');
+  });
+
+  it('已登录访问管理台真的能渲染出页面（SSR 不能缺 QueryClientProvider）', async () => {
+    // 回归：根路由曾经只在 router context 里放了 `queryClient`，却没有渲染
+    // `<QueryClientProvider>`。于是每个用到 `useQuery` 的页面都在渲染期抛
+    // 「No QueryClient set, use QueryClientProvider to set one」——
+    // 生产 SSR 下表现为 **HTTP 200 但页面空白/被截断**，浏览器里则整页崩掉。
+    //
+    // 这条测试必须**带会话**发请求：未登录时 `_authed` 的 beforeLoad 会先跳转，
+    // 页面组件根本不会执行，所以旧的「未登录不泄露数据」用例永远看不到这个故障。
+    // 断言也要落在**渲染结果**上，只看状态码同样会漏（200 是假象）。
+    for (const { path, marker } of CONSOLE_PAGES) {
+      const response = await fetch(url(path), { headers: { cookie: consoleCookie } });
+      const body = await response.text();
+
+      // 用对象包装路径，失败时能一眼看出是哪个页面挂了
+      expect({
+        path,
+        status: response.status,
+        // 布局渲染出来
+        layout: body.includes('Recado 管理台'),
+        // 叶子页面自己也执行到了（各页面的静态文案）
+        leaf: body.includes(marker),
+      }).toEqual({ path, status: 200, layout: true, leaf: true });
+
+      expect(body).not.toContain('No QueryClient set');
+    }
   });
 
   it('/auth/login 会 302 到 IdP 并下发签名过的流程态 Cookie', async () => {
