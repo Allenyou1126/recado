@@ -138,9 +138,22 @@ export async function completeAuthorization(
     const claims = tokens.claims();
     if (claims === undefined) return err(AuthErrors.oidcFailed('id_token'));
 
+    const roles = readRolesFromClaims(claims, env.OIDC_ROLE_CLAIM);
+
+    if (roles.length === 0) {
+      // 角色为空 = 拒绝登录（决策 Q-17），而错误码本身不含任何线索：
+      // claim 路径填错、IdP 没断言角色、角色没授予，三者表现一模一样。
+      // 这里只记 **claim 名**（不记值），运维据此就能看出角色其实在哪个 claim 里；
+      // 例如 Zitadel 把它放在 urn:zitadel:iam:org:project:roles。
+      logger.warn(
+        { claimPath: env.OIDC_ROLE_CLAIM, availableClaims: Object.keys(claims) },
+        'oidc claims contain no roles at the configured path',
+      );
+    }
+
     return ok({
       identity: identityFromClaims(env, claims),
-      roles: readRolesFromClaims(claims, env.OIDC_ROLE_CLAIM),
+      roles,
       idToken: tokens.id_token ?? null,
     });
   } catch (cause) {
